@@ -63,12 +63,11 @@ async function upsertSeeds() {
   return seeded;
 }
 
-// Seed on module load if Firebase is available and collection is empty
+// Seed asynchronously after startup — do NOT block module load
 if (useFirebase) {
-  const snap = await col().limit(1).get();
-  if (snap.empty) {
-    await upsertSeeds();
-  }
+  col().limit(1).get()
+    .then((snap) => { if (snap.empty) return upsertSeeds(); })
+    .catch((err) => console.error('Suggestions seed error:', err.message));
 }
 
 // ── Route helpers ─────────────────────────────────────────────────────────────

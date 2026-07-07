@@ -20,6 +20,7 @@ export function useArticles(feedId, refreshKey = 0, autoIntervalMs = 0) {
     if (!feedId) return;
     try {
       const data = await api.getArticles(feedId, bust);
+      if (!data || typeof data !== 'object') return;
       setArticles(data);
       setLastFetched(Date.now());
       setError(null);
@@ -51,6 +52,7 @@ export function useArticles(feedId, refreshKey = 0, autoIntervalMs = 0) {
     api.getArticles(feedId, refreshKey > 0)
       .then((data) => {
         if (cancelled) return;
+        if (!data || typeof data !== 'object') { setLoading(false); return; }
         setArticles(data);
         setLastFetched(Date.now());
         setLoading(false);
