@@ -118,7 +118,7 @@ export default function Dashboard() {
     document.title = totalNew > 0 ? `(${totalNew} new) Pulse` : 'Pulse — News Reader';
   }, [totalNew]);
 
-  const safeTabId = activeTabId === 'all' || categories.some((c) => c.id === activeTabId) ? activeTabId : 'all';
+  const safeTabId = activeTabId === 'all' || activeTabId === 'discover' || categories.some((c) => c.id === activeTabId) ? activeTabId : 'all';
   const visibleFeeds = safeTabId === 'all'
     ? feeds
     : feeds.filter((f) => categories.find((c) => c.id === safeTabId)?.feedIds.includes(f.id));
