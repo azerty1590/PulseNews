@@ -10,12 +10,15 @@ function loadLocal() {
 export function useCategories() {
   const [categories, setCategories] = useState(loadLocal);
 
-  // Sync from server on mount; fall back to localStorage if server unreachable
+  // Sync from server on mount; only overwrite localStorage if server has data.
   useEffect(() => {
     api.getCategories()
       .then((data) => {
-        setCategories(data);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        if (data.length > 0) {
+          setCategories(data);
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        }
+        // Server returned empty — keep localStorage as-is (server likely just restarted)
       })
       .catch(() => { /* keep localStorage values */ });
   }, []);
@@ -64,32 +67,32 @@ export function useCategories() {
     try { await api.deleteCategory(id); } catch {}
   }, []);
 
-  const assignFeed = useCallback(async (feedId, categoryId) => {
+  const assignFeed = useCallback((feedId, categoryId) => {
     setCategories((prev) => {
       const next = prev.map((c) => {
         if (c.id === categoryId) return { ...c, feedIds: c.feedIds.includes(feedId) ? c.feedIds : [...c.feedIds, feedId] };
         return { ...c, feedIds: c.feedIds.filter((id) => id !== feedId) };
       });
       localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-      // sync each mutated category
-      for (const c of next) {
-        if (c.id === categoryId || prev.find((p) => p.id === c.id)?.feedIds.includes(feedId)) {
-          api.updateCategory(c.id, { feedIds: c.feedIds }).catch(() => {});
-        }
-      }
+      // Find affected categories and sync — done here so we have both prev and next
+      const affected = next.filter((c) => {
+        const old = prev.find((p) => p.id === c.id);
+        return JSON.stringify(old?.feedIds) !== JSON.stringify(c.feedIds);
+      });
+      Promise.all(affected.map((c) => api.updateCategory(c.id, { feedIds: c.feedIds }))).catch(() => {});
       return next;
     });
   }, []);
 
-  const unassignFeed = useCallback(async (feedId) => {
+  const unassignFeed = useCallback((feedId) => {
     setCategories((prev) => {
       const next = prev.map((c) => ({ ...c, feedIds: c.feedIds.filter((id) => id !== feedId) }));
       localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-      for (const c of next) {
-        if (prev.find((p) => p.id === c.id)?.feedIds.includes(feedId)) {
-          api.updateCategory(c.id, { feedIds: c.feedIds }).catch(() => {});
-        }
-      }
+      const affected = next.filter((c) => {
+        const old = prev.find((p) => p.id === c.id);
+        return JSON.stringify(old?.feedIds) !== JSON.stringify(c.feedIds);
+      });
+      Promise.all(affected.map((c) => api.updateCategory(c.id, { feedIds: c.feedIds }))).catch(() => {});
       return next;
     });
   }, []);
