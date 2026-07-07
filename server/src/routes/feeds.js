@@ -4,7 +4,7 @@ import { normalizeUrl, fetchFeed, assertSafeUrl, discoverFeedUrls } from '../fee
 
 const articlesLimiter = rateLimit({
   windowMs: 60_000,
-  max: 30,
+  max: 300,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many requests, please wait a moment' },
