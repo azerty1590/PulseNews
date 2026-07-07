@@ -17,6 +17,7 @@ export function useFeeds() {
     try {
       setLoading(true);
       const data = await api.getFeeds();
+      if (!Array.isArray(data)) return;
       if (data.length > 0) {
         feedsRef.current = data;
         setFeeds(data);

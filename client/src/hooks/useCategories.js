@@ -14,6 +14,7 @@ export function useCategories() {
   useEffect(() => {
     api.getCategories()
       .then(async (data) => {
+        if (!Array.isArray(data)) return;
         if (data.length > 0) {
           setCategories(data);
           localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
