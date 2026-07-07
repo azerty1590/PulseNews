@@ -10,15 +10,30 @@ function loadLocal() {
 export function useCategories() {
   const [categories, setCategories] = useState(loadLocal);
 
-  // Sync from server on mount; only overwrite localStorage if server has data.
+  // Sync from server on mount; restore from localStorage if server is empty.
   useEffect(() => {
     api.getCategories()
-      .then((data) => {
+      .then(async (data) => {
         if (data.length > 0) {
           setCategories(data);
           localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        } else {
+          const local = loadLocal();
+          if (local.length === 0) return;
+          // Re-create categories on server, preserving feedIds
+          const restored = [];
+          for (const c of local) {
+            try {
+              const created = await api.addCategory(c.name);
+              if (c.feedIds?.length) {
+                await api.updateCategory(created.id, { feedIds: c.feedIds }).catch(() => {});
+              }
+              restored.push({ ...created, feedIds: c.feedIds ?? [] });
+            } catch { restored.push(c); }
+          }
+          setCategories(restored);
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(restored));
         }
-        // Server returned empty — keep localStorage as-is (server likely just restarted)
       })
       .catch(() => { /* keep localStorage values */ });
   }, []);

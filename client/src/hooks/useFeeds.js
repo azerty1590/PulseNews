@@ -17,12 +17,26 @@ export function useFeeds() {
     try {
       setLoading(true);
       const data = await api.getFeeds();
-      feedsRef.current = data;
       if (data.length > 0) {
+        feedsRef.current = data;
         setFeeds(data);
         localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      } else {
+        // Server is empty — restore from localStorage back to server
+        const local = loadLocal();
+        if (local.length > 0) {
+          const restored = [];
+          for (const f of local) {
+            try {
+              const created = await api.addFeed(f.url, f.label);
+              restored.push(created);
+            } catch { restored.push(f); }
+          }
+          feedsRef.current = restored;
+          setFeeds(restored);
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(restored));
+        }
       }
-      // Server empty — keep localStorage feeds displayed, don't wipe them
     } catch (e) {
       setError(e.message);
     } finally {
