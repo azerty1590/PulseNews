@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: pulse-news-api
+    runtime: node
+    rootDir: server
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: CLIENT_ORIGIN
+        value: https://pulse-news-17d37.web.app
+      - key: PORT
+        value: 3001

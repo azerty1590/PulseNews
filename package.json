@@ -1,0 +1,10 @@
+{
+  "name": "news-aggregator",
+  "private": true,
+  "scripts": {
+    "server": "npm --prefix server run dev",
+    "client": "npm --prefix client run dev",
+    "dev": "start npm --prefix server run dev && npm --prefix client run dev",
+    "install:all": "npm --prefix server install && npm --prefix client install"
+  }
+}
