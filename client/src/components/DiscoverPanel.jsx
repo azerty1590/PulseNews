@@ -96,13 +96,15 @@ function SkeletonCard() {
   );
 }
 
-function SuggestionCard({ s, onAdd, isAdding, isAdded }) {
+function SuggestionCard({ s, onAdd, onRemove, isAdding, isRemoving, isAdded, isFollowed }) {
   let feedUrl = s.feedUrl ?? s.url ?? '';
   let domain = '';
   try { domain = new URL(feedUrl).hostname; } catch {}
 
+  const following = isFollowed && !isAdded;
+
   return (
-    <div className="rounded-2xl border border-white/[0.07] bg-surface-1 p-4 flex flex-col gap-3">
+    <div className={`rounded-2xl border bg-surface-1 p-4 flex flex-col gap-3 transition-colors ${following ? 'border-indigo-500/20' : 'border-white/[0.07]'}`}>
       <div className="flex items-center gap-2.5">
         <FaviconOrFallback url={feedUrl} label={s.label} />
         <span className="text-sm font-semibold text-white/85 truncate flex-1 min-w-0">{s.label ?? domain}</span>
@@ -132,18 +134,24 @@ function SuggestionCard({ s, onAdd, isAdding, isAdded }) {
           ))}
         </div>
 
-        {isAdded ? (
-          <button
-            disabled
-            className="flex-shrink-0 text-xs rounded-lg px-3 py-1.5 bg-emerald-500/10 text-emerald-400 disabled:cursor-not-allowed"
-          >
-            ✓ Added
-          </button>
+        {isAdded || following ? (
+          <div className="flex items-center gap-1.5 flex-shrink-0">
+            <span className="text-[10px] text-indigo-400/70">Following</span>
+            {isRemoving ? (
+              <button disabled className="flex items-center gap-1 text-xs rounded-lg px-2.5 py-1.5 bg-white/[0.04] text-white/20 disabled:cursor-not-allowed">
+                <Spinner className="h-3 w-3" />
+              </button>
+            ) : (
+              <button
+                onClick={() => onRemove(s)}
+                className="text-xs rounded-lg px-2.5 py-1.5 bg-white/[0.04] text-white/25 hover:bg-red-500/15 hover:text-red-400 transition-colors"
+              >
+                Remove
+              </button>
+            )}
+          </div>
         ) : isAdding ? (
-          <button
-            disabled
-            className="flex-shrink-0 flex items-center gap-1.5 text-xs rounded-lg px-3 py-1.5 bg-white/[0.06] text-white/25 disabled:cursor-not-allowed"
-          >
+          <button disabled className="flex-shrink-0 flex items-center gap-1.5 text-xs rounded-lg px-3 py-1.5 bg-white/[0.06] text-white/25 disabled:cursor-not-allowed">
             <Spinner className="h-3 w-3" />
           </button>
         ) : (
@@ -159,14 +167,17 @@ function SuggestionCard({ s, onAdd, isAdding, isAdded }) {
   );
 }
 
-export default function DiscoverPanel({ feeds, onAdd }) {
+export default function DiscoverPanel({ feeds, onAdd, onRemove }) {
   const [suggestions, setSuggestions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeTag, setActiveTag] = useState('all');
   const [adding, setAdding] = useState(new Set());
   const [added, setAdded] = useState(new Set());
+  const [removing, setRemoving] = useState(new Set());
   const [toastMsg, setToastMsg] = useState(null);
+
+  const followedUrls = new Set(feeds.map((f) => f.url ?? f.feedUrl ?? '').filter(Boolean));
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -212,11 +223,23 @@ export default function DiscoverPanel({ feeds, onAdd }) {
       setToastMsg(msg);
       setTimeout(() => setToastMsg(null), 3000);
     } finally {
-      setAdding((prev) => {
-        const next = new Set(prev);
-        next.delete(feedUrl);
-        return next;
-      });
+      setAdding((prev) => { const next = new Set(prev); next.delete(feedUrl); return next; });
+    }
+  }
+
+  async function handleRemove(s) {
+    const feedUrl = s.feedUrl ?? s.url ?? '';
+    const feed = feeds.find((f) => (f.url ?? f.feedUrl ?? '') === feedUrl);
+    if (!feed) return;
+    setRemoving((prev) => new Set(prev).add(feedUrl));
+    try {
+      await onRemove(feed.id);
+      setAdded((prev) => { const next = new Set(prev); next.delete(feedUrl); return next; });
+    } catch (ex) {
+      setToastMsg(ex.message ?? 'Failed to remove feed');
+      setTimeout(() => setToastMsg(null), 3000);
+    } finally {
+      setRemoving((prev) => { const next = new Set(prev); next.delete(feedUrl); return next; });
     }
   }
 
@@ -280,8 +303,11 @@ export default function DiscoverPanel({ feeds, onAdd }) {
                 key={feedUrl}
                 s={s}
                 onAdd={handleAdd}
+                onRemove={handleRemove}
                 isAdding={adding.has(feedUrl)}
+                isRemoving={removing.has(feedUrl)}
                 isAdded={added.has(feedUrl)}
+                isFollowed={followedUrls.has(feedUrl)}
               />
             );
           })}

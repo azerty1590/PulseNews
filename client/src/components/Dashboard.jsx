@@ -304,6 +304,7 @@ export default function Dashboard() {
               const feed = await addFeed(url, label);
               return feed;
             }}
+            onRemove={deleteFeed}
           />
         )}
 
