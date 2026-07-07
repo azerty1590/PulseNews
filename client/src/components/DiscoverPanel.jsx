@@ -167,7 +167,7 @@ function SuggestionCard({ s, onAdd, onRemove, isAdding, isRemoving, isAdded, isF
   );
 }
 
-export default function DiscoverPanel({ feeds, onAdd, onRemove }) {
+export default function DiscoverPanel({ feeds, categories = [], onAdd, onRemove }) {
   const [suggestions, setSuggestions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -185,7 +185,7 @@ export default function DiscoverPanel({ feeds, onAdd, onRemove }) {
     try {
       const data = await getSuggestions();
       const list = Array.isArray(data) ? data : (data.suggestions ?? []);
-      setSuggestions(scoreSuggestions(list, feeds));
+      setSuggestions(scoreSuggestions(list, feeds, categories));
     } catch (ex) {
       setError(ex.message ?? 'Failed to load suggestions');
     } finally {

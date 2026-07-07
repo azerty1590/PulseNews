@@ -300,6 +300,7 @@ export default function Dashboard() {
         {isDiscover && (
           <DiscoverPanel
             feeds={feeds}
+            categories={categories}
             onAdd={async (url, label) => {
               const feed = await addFeed(url, label);
               return feed;
