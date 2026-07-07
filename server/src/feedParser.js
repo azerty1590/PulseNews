@@ -102,7 +102,7 @@ function mapRssFeed(feed, url) {
     link: feed.link ?? url,
     feedUrl: url,
     type: 'rss',
-    items: (feed.items ?? []).slice(0, 50).map((item) => ({
+    items: (feed.items ?? []).map((item) => ({
       id: item.guid ?? item.link ?? item.title,
       title: item.title ?? '(no title)',
       link: item.link ?? '',
@@ -112,7 +112,11 @@ function mapRssFeed(feed, url) {
         item.thumbnail?.$.url ??
         item.mediaContent?.$.url ??
         null,
-    })),
+    })).sort((a, b) => {
+      const ta = a.pubDate ? new Date(a.pubDate).getTime() : 0;
+      const tb = b.pubDate ? new Date(b.pubDate).getTime() : 0;
+      return tb - ta;
+    }).slice(0, 50),
   };
 }
 
