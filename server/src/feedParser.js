@@ -121,6 +121,65 @@ function mapRssFeed(feed, url) {
 }
 
 // ---------------------------------------------------------------------------
+// Date extraction for scraped articles
+// ---------------------------------------------------------------------------
+
+// Parse a loose date string into an ISO string, or null if it's not a
+// plausible article date (rejects far-future / pre-1990 / unparseable values).
+function parseLooseDate(raw) {
+  if (!raw || typeof raw !== 'string') return null;
+  const s = raw.trim();
+  if (!s) return null;
+  const t = Date.parse(s);
+  if (Number.isNaN(t)) return null;
+  const year = new Date(t).getFullYear();
+  if (year < 1990 || year > new Date().getFullYear() + 1) return null;
+  return new Date(t).toISOString();
+}
+
+// Try hard to find a publish date within (or near) an element `el`.
+// Checks <time datetime>, <time> text, [datetime]/[pubdate] attrs, and
+// elements whose class/itemprop hints at a date.
+function extractItemDate($, el) {
+  const $el = $(el);
+
+  // 1. <time datetime="..."> is the most reliable
+  const timeDt = $el.find('time[datetime]').first().attr('datetime');
+  const d1 = parseLooseDate(timeDt);
+  if (d1) return d1;
+
+  // 2. any element with a datetime/pubdate attribute
+  const attrDt =
+    $el.find('[datetime]').first().attr('datetime') ||
+    $el.find('[pubdate]').first().attr('pubdate') ||
+    $el.attr('datetime');
+  const d2 = parseLooseDate(attrDt);
+  if (d2) return d2;
+
+  // 3. schema.org / common date meta inside the item
+  const metaDt =
+    $el.find('meta[itemprop="datePublished"]').first().attr('content') ||
+    $el.find('[itemprop="datePublished"]').first().attr('content') ||
+    $el.find('[itemprop="datePublished"]').first().attr('datetime');
+  const d3 = parseLooseDate(metaDt);
+  if (d3) return d3;
+
+  // 4. <time> text, or elements whose class hints at a date
+  const textCandidates = [
+    $el.find('time').first().text(),
+    $el.find('[class*="date" i]').first().text(),
+    $el.find('[class*="published" i]').first().text(),
+    $el.find('[class*="meta" i] time').first().text(),
+  ];
+  for (const c of textCandidates) {
+    const d = parseLooseDate(c);
+    if (d) return d;
+  }
+
+  return null;
+}
+
+// ---------------------------------------------------------------------------
 // HTML scraping
 // ---------------------------------------------------------------------------
 function scrapeHtml(html, pageUrl) {
@@ -169,7 +228,7 @@ function scrapeHtml(html, pageUrl) {
     const a = $(el).find('a[href]').first();
     const href = resolveUrl(a.attr('href'), pageUrl);
     const heading = $(el).find('h1,h2,h3').first().text();
-    const time = $(el).find('time').attr('datetime') || $(el).find('time').text();
+    const time = extractItemDate($, el);
     const img = $(el).find('img[src]').first().attr('src');
     const thumb = img ? resolveUrl(img, pageUrl) : null;
     const snippet = $(el).find('p').first().text();
@@ -187,7 +246,7 @@ function scrapeHtml(html, pageUrl) {
       const a = $(el).find('a[href]').first();
       const href = resolveUrl(a.attr('href'), pageUrl);
       const heading = $(el).find('h1,h2,h3,h4').first().text() || a.text();
-      const time = $(el).find('time').attr('datetime') || null;
+      const time = extractItemDate($, el);
       const img = $(el).find('img[src]').first().attr('src');
       const thumb = img ? resolveUrl(img, pageUrl) : null;
       addItem(href, heading, time, '', thumb);
