@@ -66,11 +66,12 @@ export default function Dashboard() {
   const { categories, addCategory, renameCategory, deleteCategory, assignFeed, unassignFeed, categoryOfFeed } = useCategories();
   const isMobile = useIsMobile();
 
-  const [showModal,    setShowModal]    = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
-  const [showStarred,  setShowStarred]  = useState(false);
-  const [previewArticle, setPreviewArticle] = useState(null);
-  const [searchQuery,  setSearchQuery]  = useState('');
+  const [showModal,        setShowModal]        = useState(false);
+  const [showSettings,     setShowSettings]     = useState(false);
+  const [showStarred,      setShowStarred]      = useState(false);
+  const [previewArticle,   setPreviewArticle]   = useState(null);
+  const [searchQuery,      setSearchQuery]      = useState('');
+  const [showMobileSearch, setShowMobileSearch] = useState(false);
   const { starred, toggleStar, isStarred } = useStarred();
   const [desktopView, setDesktopView] = useState(() => localStorage.getItem('newsboard:view')    ?? 'grid');
   const [mobileView,  setMobileView]  = useState(() => localStorage.getItem('newsboard:mview')   ?? 'feed');
@@ -136,7 +137,7 @@ export default function Dashboard() {
               <span className="text-sm font-semibold text-white/90">Pulse</span>
             </div>
 
-            {/* Search */}
+            {/* Search — desktop */}
             <div className="hidden sm:flex flex-1 max-w-xs mx-4 items-center gap-2 rounded-lg bg-white/[0.05] px-3 py-1.5 ring-1 ring-transparent focus-within:ring-accent/30 focus-within:bg-white/[0.07] transition-all">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5 text-white/25 shrink-0">
                 <path fillRule="evenodd" d="M9 3.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11ZM2 9a7 7 0 1 1 12.452 4.391l3.328 3.329a.75.75 0 1 1-1.06 1.06l-3.329-3.328A7 7 0 0 1 2 9Z" clipRule="evenodd" />
@@ -156,6 +157,18 @@ export default function Dashboard() {
                 </button>
               )}
             </div>
+
+            {/* Search — mobile icon button that expands */}
+            {isMobile && !showMobileSearch && (
+              <button
+                onClick={() => setShowMobileSearch(true)}
+                className="flex items-center justify-center rounded-lg p-2 text-white/30 hover:text-white/70 hover:bg-white/[0.06] transition-colors sm:hidden"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+                  <path fillRule="evenodd" d="M9 3.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11ZM2 9a7 7 0 1 1 12.452 4.391l3.328 3.329a.75.75 0 1 1-1.06 1.06l-3.329-3.328A7 7 0 0 1 2 9Z" clipRule="evenodd" />
+                </svg>
+              </button>
+            )}
 
             {/* ml-auto pushes everything right on mobile */}
             <div className="flex-1 sm:hidden" />
@@ -208,6 +221,27 @@ export default function Dashboard() {
             </button>
           </div>
 
+          {/* ── mobile search row ── */}
+          {isMobile && showMobileSearch && (
+            <div className="flex items-center gap-2 px-4 py-2 border-t border-white/[0.04]">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5 text-white/25 shrink-0">
+                <path fillRule="evenodd" d="M9 3.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11ZM2 9a7 7 0 1 1 12.452 4.391l3.328 3.329a.75.75 0 1 1-1.06 1.06l-3.329-3.328A7 7 0 0 1 2 9Z" clipRule="evenodd" />
+              </svg>
+              <input
+                autoFocus
+                type="text"
+                placeholder="Search articles…"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="flex-1 bg-transparent text-sm text-white/70 placeholder-white/20 outline-none"
+              />
+              <button
+                onClick={() => { setSearchQuery(''); setShowMobileSearch(false); }}
+                className="text-white/30 hover:text-white/70 transition-colors px-1"
+              >Cancel</button>
+            </div>
+          )}
+
           {/* ── category tabs row ── */}
           {showTabs && (
             <div className="border-t border-white/[0.04] px-4 sm:px-6">
@@ -258,6 +292,17 @@ export default function Dashboard() {
             feeds={visibleFeeds}
             groupBySource={mobileView === 'sources'}
             density={density}
+            searchQuery={searchQuery}
+            unreadOnly={unreadOnly}
+            isStarred={isStarred}
+            onToggleStar={toggleStar}
+            onPreview={(item) => setPreviewArticle({ item, feedLabel: visibleFeeds.find(f => f.id === item.feedId)?.label ?? '' })}
+            categories={categories}
+            categoryOfFeed={categoryOfFeed}
+            onDelete={deleteFeed}
+            onRename={(id, label) => renameFeed(id, label)}
+            onAssign={(feedId, catId) => assignFeed(feedId, catId)}
+            onUnassign={(feedId) => unassignFeed(feedId)}
           />
         )}
 
@@ -340,7 +385,11 @@ export default function Dashboard() {
         )}
       </main>
 
-      {showModal && <AddFeedModal onAdd={addFeed} onClose={() => setShowModal(false)} />}
+      {showModal && <AddFeedModal onAdd={async (url, label) => {
+          const feed = await addFeed(url, label);
+          if (safeTabId !== 'all' && feed?.id) assignFeed(feed.id, safeTabId);
+          return feed;
+        }} onClose={() => setShowModal(false)} />}
 
       <SettingsPanel
         open={showSettings}
