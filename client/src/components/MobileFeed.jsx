@@ -89,12 +89,11 @@ function HeroCard({ item, isStarred, onToggleStar, onPreview, readSet, onRead })
 }
 
 /* Standard card — image right, text left */
-function ArticleCard({ item, density = 'small', isStarred, onToggleStar, onPreview, readSet, onRead }) {
+function ArticleCard({ item, density = 'small', showSource = false, isStarred, onToggleStar, onPreview, readSet, onRead }) {
   const rel = relativeTime(item.pubDate);
   const full = fullDate(item.pubDate);
   const colour = feedColour(item.feedId);
   const showThumb = density !== 'compact' && item.thumbnail;
-  const lineClamp = density === 'compact' ? 'line-clamp-1' : 'line-clamp-3';
   const isRead = readSet?.has(`${item.feedId}::${item.id}`);
 
   function handleClick(e) {
@@ -106,21 +105,20 @@ function ArticleCard({ item, density = 'small', isStarred, onToggleStar, onPrevi
   return (
     <div
       onClick={handleClick}
-      className={`flex items-start gap-3 rounded-xl px-1 py-3 border-b border-white/[0.05] active:bg-white/[0.03] transition-colors last:border-0 cursor-pointer ${isRead ? 'opacity-45' : ''}`}
+      className={`flex items-center gap-3 px-1 py-2.5 border-b border-white/[0.05] active:bg-white/[0.03] transition-colors last:border-0 cursor-pointer ${isRead ? 'opacity-45' : ''}`}
     >
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-1.5 mb-1">
-          <span className={`text-[11px] font-semibold ${colour}`}>{item.feedLabel}</span>
-          {rel && <><span className="text-white/15 text-[10px]">·</span><span className="text-[11px] text-white/30" title={full}>{rel}</span></>}
+        <div className="flex items-baseline gap-2 min-w-0">
+          <p className="flex-1 text-[13.5px] font-medium leading-snug text-white/80 truncate">{item.title}</p>
+          {rel && <span className="shrink-0 text-[10px] text-white/25" title={full}>{rel}</span>}
         </div>
-        <p className={`text-[13.5px] font-medium leading-snug text-white/80 ${lineClamp}`}>{item.title}</p>
         {density === 'detailed' && item.summary && (
-          <p className="mt-1 text-[12px] text-white/40 line-clamp-2 leading-relaxed">{item.summary}</p>
+          <p className="mt-1 text-[12px] text-white/40 line-clamp-1 leading-relaxed">{item.summary}</p>
         )}
       </div>
       {showThumb && (
         <img src={item.thumbnail} alt=""
-          className="h-16 w-16 shrink-0 rounded-xl object-cover opacity-85"
+          className="h-12 w-12 shrink-0 rounded-lg object-cover opacity-85"
           onError={(e) => { e.currentTarget.style.display = 'none'; }} />
       )}
       <StarBtn item={item} isStarred={isStarred} onToggleStar={onToggleStar} />
@@ -129,10 +127,10 @@ function ArticleCard({ item, density = 'small', isStarred, onToggleStar, onPrevi
 }
 
 /* Section divider with source name */
-function SectionHeader({ label, colour }) {
+function SectionHeader({ label, colour, first = false }) {
   return (
-    <div className="flex items-center gap-2 pt-5 pb-1 px-1">
-      <span className={`text-[11px] font-bold uppercase tracking-widest ${colour}`}>{label}</span>
+    <div className={`flex items-center gap-2 ${first ? 'pt-1' : 'pt-5'} pb-2 px-1`}>
+      <span className={`text-[10px] font-bold uppercase tracking-widest ${colour}`}>{label}</span>
       <div className="flex-1 h-px bg-white/[0.05]" />
     </div>
   );
@@ -282,7 +280,7 @@ export default function MobileFeed({
   });
 
   const Toolbar = () => (
-    <div className="flex items-center justify-between px-4 pt-2 pb-1">
+    <div className="flex items-center justify-between px-4 pt-1 pb-2">
       <button
         onClick={() => setRefreshKey((k) => k + 1)}
         className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11px] text-white/25 hover:text-white/60 hover:bg-white/[0.05] transition-colors"
@@ -341,13 +339,11 @@ export default function MobileFeed({
         if (!grouped[item.feedId]) grouped[item.feedId] = { label: item.feedLabel, id: item.feedId, items: [] };
         grouped[item.feedId].items.push(item);
       }
-      return Object.values(grouped).map((group) => (
+      return Object.values(grouped).map((group, gi) => (
         <div key={group.id}>
-          <SectionHeader label={group.label} colour={feedColour(group.id)} />
+          <SectionHeader label={group.label} colour={feedColour(group.id)} first={gi === 0} />
           {group.items.slice(0, 5).map((item, i) =>
-            i === 0
-              ? <HeroCard key={item.id} item={item} {...sharedProps} />
-              : <ArticleCard key={item.id} item={item} density={density} {...sharedProps} />
+            <ArticleCard key={item.id} item={item} density={density} {...sharedProps} />
           )}
         </div>
       ));
@@ -356,8 +352,8 @@ export default function MobileFeed({
     const [hero, ...rest] = filtered;
     return (
       <>
-        <div className="pb-1"><HeroCard item={hero} {...sharedProps} /></div>
-        <div className="mt-1">
+        <div className="mb-2"><HeroCard item={hero} {...sharedProps} /></div>
+        <div>
           {rest.map((item) => (
             <ArticleCard key={`${item.feedId}-${item.id}`} item={item} density={density} {...sharedProps} />
           ))}

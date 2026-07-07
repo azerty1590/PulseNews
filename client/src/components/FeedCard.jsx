@@ -1,5 +1,4 @@
 import { useState, useRef, useEffect } from 'react';
-import { Draggable } from '@hello-pangea/dnd';
 import { useArticles } from '../hooks/useArticles.js';
 import { useReadState } from '../hooks/useReadState.js';
 import { dispatchNewCount } from '../hooks/useTitleCount.js';
@@ -83,7 +82,7 @@ const TRASH_PATH  = 'M5 3.25V4H2.75a.75.75 0 0 0 0 1.5h.3l.815 8.15A1.5 1.5 0 0 
 const GRIP_DOTS   = 'M5 4a1 1 0 1 1-2 0 1 1 0 0 1 2 0Zm6 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0ZM5 8a1 1 0 1 1-2 0 1 1 0 0 1 2 0Zm6 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0ZM5 12a1 1 0 1 1-2 0 1 1 0 0 1 2 0Zm6 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z';
 
 /* ── card ── */
-export default function FeedCard({ feed, index, onDelete, onRename, categories, currentCategoryId, onAssign, onUnassign, density = 'small', searchQuery = '', onToggleStar, isStarred, autoRefresh = 0, unreadOnly = false, onPreview }) {
+export default function FeedCard({ feed, index, onDelete, onRename, categories, currentCategoryId, onAssign, onUnassign, density = 'small', searchQuery = '', onToggleStar, isStarred, autoRefresh = 0, unreadOnly = false, onPreview, isDragging = false, isDropTarget = false, onDragStart, onDragEnter, onDragEnd }) {
   const [refreshKey, setRefreshKey] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
   const [editingLabel, setEditingLabel] = useState(false);
@@ -173,25 +172,28 @@ export default function FeedCard({ feed, index, onDelete, onRename, categories, 
   handleRefreshRef.current = handleRefresh;
 
   return (
-    <Draggable draggableId={feed.id} index={index}>
-      {(provided, snapshot) => (
         <div
-          ref={(el) => { provided.innerRef(el); cardRef.current = el; }}
-          {...provided.draggableProps}
+          ref={cardRef}
+          draggable
+          onDragStart={(e) => { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('feedId', feed.id); onDragStart?.(); }}
+          onDragEnter={(e) => { e.preventDefault(); onDragEnter?.(); }}
+          onDragOver={(e) => e.preventDefault()}
+          onDragEnd={() => onDragEnd?.()}
           onMouseEnter={() => { isHoveredRef.current = true; }}
           onMouseLeave={() => { isHoveredRef.current = false; setFocusedIdx(-1); }}
           className={`group/card flex flex-col rounded-2xl border transition-all duration-200 ${
-            snapshot.isDragging
-              ? 'border-accent/40 bg-surface-2 shadow-2xl shadow-black/70 scale-[1.015] rotate-[0.5deg]'
-              : 'border-white/[0.07] bg-surface-1 hover:border-white/[0.13] hover:shadow-lg hover:shadow-black/30'
+            isDragging
+              ? 'border-accent/30 bg-surface-1 opacity-30'
+              : isDropTarget
+                ? 'border-accent/50 bg-accent/5 ring-2 ring-accent/40 shadow-lg shadow-black/30'
+                : 'border-white/[0.07] bg-surface-1 hover:border-white/[0.13] hover:shadow-lg hover:shadow-black/30'
           }`}
         >
           {/* ── Card header ── */}
-          <div className="flex items-center gap-2.5 px-4 py-3.5">
+          <div className="flex items-center gap-2 px-3 py-2">
 
             {/* Drag handle — hidden until hover */}
             <span
-              {...provided.dragHandleProps}
               className="cursor-grab active:cursor-grabbing shrink-0 opacity-0 group-hover/card:opacity-100 transition-opacity text-white/25 hover:text-white/60 -ml-1"
               title="Drag to reorder"
             >
@@ -317,7 +319,7 @@ export default function FeedCard({ feed, index, onDelete, onRename, categories, 
           </div>
 
           {/* ── Divider ── */}
-          <div className="mx-4 h-px bg-white/[0.05]" />
+          <div className="mx-3 h-px bg-white/[0.05]" />
 
           {/* ── Articles ── */}
           <div className="flex-1 overflow-y-auto scrollbar-none" style={{ maxHeight: maxH }}>
@@ -454,7 +456,5 @@ export default function FeedCard({ feed, index, onDelete, onRename, categories, 
             </div>
           )}
         </div>
-      )}
-    </Draggable>
   );
 }

@@ -1,5 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
-import { DragDropContext, Droppable } from '@hello-pangea/dnd';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useFeeds } from '../hooks/useFeeds.js';
 import { useCategories } from '../hooks/useCategories.js';
 import FeedCard from './FeedCard.jsx';
@@ -89,6 +88,11 @@ export default function Dashboard() {
   const { categories, addCategory, renameCategory, deleteCategory, assignFeed, unassignFeed, categoryOfFeed, cleanupStaleIds } = useCategories();
   const isMobile = useIsMobile();
 
+  const [dragState,        setDragState]        = useState(null);  // { feedId, fromIndex }
+  const [dropIndex,        setDropIndex]        = useState(null);  // card index currently hovered
+  const [catDropId,        setCatDropId]        = useState(null);  // category tab being hovered
+  const dragRef  = useRef(null);   // mirrors dragState — always current in event handlers
+  const dropRef  = useRef(null);   // mirrors dropIndex — always current in event handlers
   const [showModal,        setShowModal]        = useState(false);
   const [showSettings,     setShowSettings]     = useState(false);
   const [showStarred,      setShowStarred]      = useState(false);
@@ -129,19 +133,32 @@ export default function Dashboard() {
   }, [totalNew]);
 
   const safeTabId = activeTabId === 'all' || activeTabId === 'discover' || categories.some((c) => c.id === activeTabId) ? activeTabId : 'all';
-  const visibleFeeds = safeTabId === 'all'
-    ? feeds
-    : feeds.filter((f) => categories.find((c) => c.id === safeTabId)?.feedIds.includes(f.id));
+  const visibleFeeds = useMemo(
+    () => safeTabId === 'all'
+      ? feeds
+      : feeds.filter((f) => categories.find((c) => c.id === safeTabId)?.feedIds.includes(f.id)),
+    [safeTabId, feeds, categories]
+  );
 
-  function onDragEnd({ source: s, destination: d }) {
-    if (!d || s.index === d.index) return;
+  function commitReorder(fromIndex, toIndex) {
+    if (fromIndex === toIndex || toIndex === null) return;
     const reordered = [...visibleFeeds];
-    const [moved] = reordered.splice(s.index, 1);
-    reordered.splice(d.index, 0, moved);
-    if (activeTabId === 'all') { reorderFeeds(reordered); return; }
-    const ids = reordered.map((f) => f.id);
-    let vi = 0;
-    reorderFeeds(feeds.map((f) => visibleFeeds.some((v) => v.id === f.id) ? feeds.find((x) => x.id === ids[vi++]) : f));
+    const [moved] = reordered.splice(fromIndex, 1);
+    reordered.splice(toIndex, 0, moved);
+
+    if (safeTabId === 'all') {
+      reorderFeeds(reordered);
+      return;
+    }
+
+    // Category view: rebuild full feeds array preserving non-visible positions
+    const reorderedIds = reordered.map((f) => f.id);
+    const visibleIdSet = new Set(visibleFeeds.map((f) => f.id));
+    let ri = 0;
+    reorderFeeds(feeds.map((f) => {
+      if (!visibleIdSet.has(f.id)) return f;
+      return feeds.find((x) => x.id === reorderedIds[ri++]) ?? f;
+    }));
   }
 
   const isDiscover = safeTabId === 'discover';
@@ -193,70 +210,61 @@ export default function Dashboard() {
               )}
             </div>
 
-            {/* Search — mobile icon button that expands */}
-            {isMobile && !showMobileSearch && (
-              <button
-                onClick={() => setShowMobileSearch(true)}
-                className="flex items-center justify-center rounded-lg p-2 text-white/30 hover:text-white/70 hover:bg-white/[0.06] transition-colors sm:hidden"
-              >
+            {/* ── mobile-only controls (right side) ── */}
+            <div className="flex sm:hidden items-center gap-1 ml-auto">
+              {/* Search */}
+              {!showMobileSearch && (
+                <button onClick={() => setShowMobileSearch(true)}
+                  className="flex items-center justify-center rounded-lg p-2 text-white/30 hover:text-white/70 hover:bg-white/[0.06] transition-colors">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+                    <path fillRule="evenodd" d="M9 3.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11ZM2 9a7 7 0 1 1 12.452 4.391l3.328 3.329a.75.75 0 1 1-1.06 1.06l-3.329-3.328A7 7 0 0 1 2 9Z" clipRule="evenodd" />
+                  </svg>
+                </button>
+              )}
+              {/* Bookmarks */}
+              <button onClick={() => setShowStarred(true)}
+                className="relative flex items-center justify-center rounded-lg p-2 text-white/30 hover:text-white/70 hover:bg-white/[0.06] transition-colors">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
-                  <path fillRule="evenodd" d="M9 3.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11ZM2 9a7 7 0 1 1 12.452 4.391l3.328 3.329a.75.75 0 1 1-1.06 1.06l-3.329-3.328A7 7 0 0 1 2 9Z" clipRule="evenodd" />
+                  <path d="M6.3 2.841A1.5 1.5 0 0 0 4 4.11V15a1.5 1.5 0 0 0 2.374 1.218l3.126-2.5 3.126 2.5A1.5 1.5 0 0 0 15 15V4.11a1.5 1.5 0 0 0-2.3-1.269l-3.126 2.5-3.274-2.5Z" />
+                </svg>
+                {starred.length > 0 && <span className="absolute top-1 right-1 h-1.5 w-1.5 rounded-full bg-amber-400" />}
+              </button>
+              {/* Settings */}
+              <button onClick={() => setShowSettings(true)}
+                className="flex items-center justify-center rounded-lg p-2 text-white/30 hover:text-white/70 hover:bg-white/[0.06] transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+                  <path fillRule="evenodd" d="M7.84 1.804A1 1 0 0 1 8.82 1h2.36a1 1 0 0 1 .98.804l.331 1.652a6.993 6.993 0 0 1 1.929 1.115l1.598-.54a1 1 0 0 1 1.186.447l1.18 2.044a1 1 0 0 1-.205 1.251l-1.267 1.113a7.047 7.047 0 0 1 0 2.228l1.267 1.113a1 1 0 0 1 .206 1.25l-1.18 2.045a1 1 0 0 1-1.187.447l-1.598-.54a6.993 6.993 0 0 1-1.929 1.115l-.33 1.652a1 1 0 0 1-.98.804H8.82a1 1 0 0 1-.98-.804l-.331-1.652a6.993 6.993 0 0 1-1.929-1.115l-1.598.54a1 1 0 0 1-1.186-.447l-1.18-2.044a1 1 0 0 1 .205-1.251l1.267-1.114a7.05 7.05 0 0 1 0-2.227L1.821 7.773a1 1 0 0 1-.206-1.25l1.18-2.045a1 1 0 0 1 1.187-.447l1.598.54A6.992 6.992 0 0 1 7.51 3.456l.33-1.652ZM10 13a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" clipRule="evenodd" />
                 </svg>
               </button>
-            )}
-
-            {/* ml-auto pushes everything right on mobile */}
-            <div className="flex-1 sm:hidden" />
-
-            {/* Server status indicator */}
-            <ServerStatus status={serverStatus} ms={serverMs} />
-
-            {/* Starred / bookmarks */}
-            <button
-              onClick={() => setShowStarred(true)}
-              className="relative flex items-center justify-center rounded-lg p-2 text-white/30 hover:text-white/70 hover:bg-white/[0.06] transition-colors"
-              title="Bookmarks"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
-                <path d="M6.3 2.841A1.5 1.5 0 0 0 4 4.11V15a1.5 1.5 0 0 0 2.374 1.218l3.126-2.5 3.126 2.5A1.5 1.5 0 0 0 15 15V4.11a1.5 1.5 0 0 0-2.3-1.269l-3.126 2.5-3.274-2.5Z" />
-              </svg>
-              {starred.length > 0 && (
-                <span className="absolute top-1 right-1 h-1.5 w-1.5 rounded-full bg-amber-400" />
-              )}
-            </button>
-
-            {/* Settings gear (desktop) */}
-            <button
-              onClick={() => setShowSettings(true)}
-              className="flex items-center justify-center rounded-lg p-2 text-white/30 hover:text-white/70 hover:bg-white/[0.06] transition-colors"
-              title="Settings"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
-                <path fillRule="evenodd" d="M7.84 1.804A1 1 0 0 1 8.82 1h2.36a1 1 0 0 1 .98.804l.331 1.652a6.993 6.993 0 0 1 1.929 1.115l1.598-.54a1 1 0 0 1 1.186.447l1.18 2.044a1 1 0 0 1-.205 1.251l-1.267 1.113a7.047 7.047 0 0 1 0 2.228l1.267 1.113a1 1 0 0 1 .206 1.25l-1.18 2.045a1 1 0 0 1-1.187.447l-1.598-.54a6.993 6.993 0 0 1-1.929 1.115l-.33 1.652a1 1 0 0 1-.98.804H8.82a1 1 0 0 1-.98-.804l-.331-1.652a6.993 6.993 0 0 1-1.929-1.115l-1.598.54a1 1 0 0 1-1.186-.447l-1.18-2.044a1 1 0 0 1 .205-1.251l1.267-1.114a7.05 7.05 0 0 1 0-2.227L1.821 7.773a1 1 0 0 1-.206-1.25l1.18-2.045a1 1 0 0 1 1.187-.447l1.598.54A6.992 6.992 0 0 1 7.51 3.456l.33-1.652ZM10 13a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" clipRule="evenodd" />
-              </svg>
-            </button>
-
-            {/* Mobile view toggle — "For you" / "By source" */}
-            <div className="flex sm:hidden items-center rounded-lg bg-white/[0.05] p-0.5 gap-0.5">
-              {[
-                { val: 'feed',    label: 'For you' },
-                { val: 'sources', label: 'Sources' },
-              ].map(({ val, label }) => (
-                <button key={val} onClick={() => setMobileViewP(val)}
-                  className={`rounded-md px-3 py-1.5 text-xs font-medium transition-all ${
-                    mobileView === val ? 'bg-white/[0.12] text-white' : 'text-white/35'
-                  }`}
-                >{label}</button>
-              ))}
+              {/* Add */}
+              <button onClick={() => setShowModal(true)}
+                className="flex items-center justify-center rounded-xl bg-accent p-2 text-white hover:bg-accent-hover active:scale-95 transition-all shadow-md shadow-accent/20">
+                <Svg d={D.plus} size="h-4 w-4" />
+              </button>
             </div>
 
-            {/* Add source */}
-            <button onClick={() => setShowModal(true)}
-              className="flex items-center gap-1.5 rounded-xl bg-accent px-4 py-2 text-xs font-semibold text-white hover:bg-accent-hover active:scale-95 transition-all shadow-md shadow-accent/20">
-              <Svg d={D.plus} size="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Add source</span>
-              <span className="sm:hidden">Add</span>
-            </button>
+            {/* ── desktop-only controls ── */}
+            <div className="hidden sm:flex items-center gap-1">
+              <ServerStatus status={serverStatus} ms={serverMs} />
+              <button onClick={() => setShowStarred(true)}
+                className="relative flex items-center justify-center rounded-lg p-2 text-white/30 hover:text-white/70 hover:bg-white/[0.06] transition-colors" title="Bookmarks">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+                  <path d="M6.3 2.841A1.5 1.5 0 0 0 4 4.11V15a1.5 1.5 0 0 0 2.374 1.218l3.126-2.5 3.126 2.5A1.5 1.5 0 0 0 15 15V4.11a1.5 1.5 0 0 0-2.3-1.269l-3.126 2.5-3.274-2.5Z" />
+                </svg>
+                {starred.length > 0 && <span className="absolute top-1 right-1 h-1.5 w-1.5 rounded-full bg-amber-400" />}
+              </button>
+              <button onClick={() => setShowSettings(true)}
+                className="flex items-center justify-center rounded-lg p-2 text-white/30 hover:text-white/70 hover:bg-white/[0.06] transition-colors" title="Settings">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+                  <path fillRule="evenodd" d="M7.84 1.804A1 1 0 0 1 8.82 1h2.36a1 1 0 0 1 .98.804l.331 1.652a6.993 6.993 0 0 1 1.929 1.115l1.598-.54a1 1 0 0 1 1.186.447l1.18 2.044a1 1 0 0 1-.205 1.251l-1.267 1.113a7.047 7.047 0 0 1 0 2.228l1.267 1.113a1 1 0 0 1 .206 1.25l-1.18 2.045a1 1 0 0 1-1.187.447l-1.598-.54a6.993 6.993 0 0 1-1.929 1.115l-.33 1.652a1 1 0 0 1-.98.804H8.82a1 1 0 0 1-.98-.804l-.331-1.652a6.993 6.993 0 0 1-1.929-1.115l-1.598.54a1 1 0 0 1-1.186-.447l-1.18-2.044a1 1 0 0 1 .205-1.251l1.267-1.114a7.05 7.05 0 0 1 0-2.227L1.821 7.773a1 1 0 0 1-.206-1.25l1.18-2.045a1 1 0 0 1 1.187-.447l1.598.54A6.992 6.992 0 0 1 7.51 3.456l.33-1.652ZM10 13a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" clipRule="evenodd" />
+                </svg>
+              </button>
+              <button onClick={() => setShowModal(true)}
+                className="flex items-center gap-1.5 rounded-xl bg-accent px-4 py-2 text-xs font-semibold text-white hover:bg-accent-hover active:scale-95 transition-all shadow-md shadow-accent/20">
+                <Svg d={D.plus} size="h-3.5 w-3.5" />
+                Add source
+              </button>
+            </div>
           </div>
 
           {/* ── mobile search row ── */}
@@ -282,7 +290,7 @@ export default function Dashboard() {
 
           {/* ── category tabs row ── */}
           {showTabs && (
-            <div className="border-t border-white/[0.04] px-4 sm:px-6">
+            <div className="border-t border-white/[0.04] px-4 sm:px-6 flex items-center gap-2">
               <CategoryTabs
                 categories={categories}
                 activeId={safeTabId}
@@ -290,7 +298,22 @@ export default function Dashboard() {
                 onAdd={addCategory}
                 onRename={renameCategory}
                 onDelete={deleteCategory}
+                catDropId={catDropId}
+                setCatDropId={setCatDropId}
+                isDragging={dragState !== null}
+                onAssignFeed={(feedId, catId) => catId === 'all' ? unassignFeed(feedId) : assignFeed(feedId, catId)}
               />
+              {/* Mobile view toggle lives here — next to tabs, not in the crowded toolbar */}
+              {isMobile && (
+                <div className="flex shrink-0 items-center rounded-lg bg-white/[0.05] p-0.5 gap-0.5 ml-auto">
+                  {[{ val: 'feed', label: 'Feed' }, { val: 'sources', label: 'Sources' }].map(({ val, label }) => (
+                    <button key={val} onClick={() => setMobileViewP(val)}
+                      className={`rounded-md px-2.5 py-1 text-[11px] font-medium transition-all ${
+                        mobileView === val ? 'bg-white/[0.12] text-white' : 'text-white/35'
+                      }`}>{label}</button>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -394,38 +417,47 @@ export default function Dashboard() {
                 ))}
               </div>
             ) : visibleFeeds.length > 0 ? (
-              <DragDropContext onDragEnd={onDragEnd}>
-                <Droppable droppableId="feeds" direction="horizontal">
-                  {(provided) => (
-                    <div ref={provided.innerRef} {...provided.droppableProps}
-                      className="grid gap-4 items-start"
-                      style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
-                    >
-                      {visibleFeeds.map((feed, index) => {
-                        const cat = categoryOfFeed(feed.id);
-                        return (
-                          <FeedCard key={feed.id} feed={feed} index={index}
-                            onDelete={deleteFeed}
-                            onRename={(label) => renameFeed(feed.id, label)}
-                            categories={categories}
-                            currentCategoryId={cat?.id ?? null}
-                            onAssign={(catId) => assignFeed(feed.id, catId)}
-                            onUnassign={() => unassignFeed(feed.id)}
-                            density={density}
-                            searchQuery={searchQuery}
-                            onToggleStar={toggleStar}
-                            isStarred={isStarred}
-                            autoRefresh={autoRefresh}
-                            unreadOnly={unreadOnly}
-                            onPreview={(item) => setPreviewArticle({ item, feedLabel: feed.label })}
-                          />
-                        );
-                      })}
-                      {provided.placeholder}
-                    </div>
-                  )}
-                </Droppable>
-              </DragDropContext>
+              <div
+                className="grid gap-4 items-start"
+                style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  const from = dragRef.current;
+                  const to   = dropRef.current;
+                  if (from !== null && to !== null) commitReorder(from, to);
+                  dragRef.current = null; dropRef.current = null;
+                  setDragState(null); setDropIndex(null);
+                }}
+              >
+                {visibleFeeds.map((feed, index) => {
+                  const cat = categoryOfFeed(feed.id);
+                  const isBeingDragged = dragState?.feedId === feed.id;
+                  const isDropTarget = dragState && dropIndex === index && !isBeingDragged;
+                  return (
+                    <FeedCard key={feed.id} feed={feed} index={index}
+                      onDelete={deleteFeed}
+                      onRename={(label) => renameFeed(feed.id, label)}
+                      categories={categories}
+                      currentCategoryId={cat?.id ?? null}
+                      onAssign={(catId) => assignFeed(feed.id, catId)}
+                      onUnassign={() => unassignFeed(feed.id)}
+                      density={density}
+                      searchQuery={searchQuery}
+                      onToggleStar={toggleStar}
+                      isStarred={isStarred}
+                      autoRefresh={autoRefresh}
+                      unreadOnly={unreadOnly}
+                      onPreview={(item) => setPreviewArticle({ item, feedLabel: feed.label })}
+                      isDragging={isBeingDragged}
+                      isDropTarget={isDropTarget}
+                      onDragStart={() => { dragRef.current = index; dropRef.current = index; setDragState({ feedId: feed.id, fromIndex: index }); setDropIndex(index); }}
+                      onDragEnter={() => { if (dragRef.current !== null) { dropRef.current = index; setDropIndex(index); } }}
+                      onDragEnd={() => { dragRef.current = null; dropRef.current = null; setDragState(null); setDropIndex(null); }}
+                    />
+                  );
+                })}
+              </div>
             ) : null}
           </div>
         )}
