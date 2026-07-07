@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '../lib/api.js';
+import { feedIdRemap } from './useFeeds.js';
 
 const STORAGE_KEY = 'newsboard:categories';
 
@@ -16,20 +17,46 @@ export function useCategories() {
       .then(async (data) => {
         if (!Array.isArray(data)) return;
         if (data.length > 0) {
-          setCategories(data);
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+          // Apply feedId remap if feeds were just restored (IDs changed after cold start)
+          const remap = feedIdRemap.current;
+          const remapped = remap
+            ? data.map((c) => ({
+                ...c,
+                feedIds: (c.feedIds ?? []).map((id) => remap.get(id) ?? id),
+              }))
+            : data;
+
+          // Push any remapped feedIds back to the server
+          if (remap) {
+            const changed = remapped.filter((c, i) => {
+              const orig = data[i];
+              return JSON.stringify(c.feedIds) !== JSON.stringify(orig.feedIds);
+            });
+            if (changed.length) {
+              await Promise.all(
+                changed.map((c) => api.updateCategory(c.id, { feedIds: c.feedIds }).catch(() => {}))
+              );
+            }
+          }
+
+          setCategories(remapped);
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(remapped));
         } else {
           const local = loadLocal();
           if (local.length === 0) return;
-          // Re-create categories on server, preserving feedIds
+          const remap = feedIdRemap.current;
           const restored = [];
           for (const c of local) {
             try {
               const created = await api.addCategory(c.name);
-              if (c.feedIds?.length) {
-                await api.updateCategory(created.id, { feedIds: c.feedIds }).catch(() => {});
+              // Remap feedIds if feeds were re-created with new IDs
+              const feedIds = remap
+                ? (c.feedIds ?? []).map((id) => remap.get(id) ?? id).filter((id) => remap.has(id) || !remap.size)
+                : (c.feedIds ?? []);
+              if (feedIds.length) {
+                await api.updateCategory(created.id, { feedIds }).catch(() => {});
               }
-              restored.push({ ...created, feedIds: c.feedIds ?? [] });
+              restored.push({ ...created, feedIds });
             } catch { restored.push(c); }
           }
           setCategories(restored);
@@ -38,11 +65,6 @@ export function useCategories() {
       })
       .catch(() => { /* keep localStorage values */ });
   }, []);
-
-  function persist(cats) {
-    setCategories(cats);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(cats));
-  }
 
   const addCategory = useCallback(async (name) => {
     try {
@@ -117,5 +139,24 @@ export function useCategories() {
     return categories.find((c) => c.feedIds.includes(feedId)) ?? null;
   }, [categories]);
 
-  return { categories, addCategory, renameCategory, deleteCategory, assignFeed, unassignFeed, categoryOfFeed };
+  // Remove feedIds from categories that no longer exist in the given feed list.
+  // Call once after both feeds and categories have loaded.
+  const cleanupStaleIds = useCallback((knownFeedIds) => {
+    const known = new Set(knownFeedIds);
+    setCategories((prev) => {
+      const next = prev.map((c) => ({
+        ...c,
+        feedIds: (c.feedIds ?? []).filter((id) => known.has(id)),
+      }));
+      const changed = next.filter((c, i) => {
+        return JSON.stringify(c.feedIds) !== JSON.stringify(prev[i].feedIds);
+      });
+      if (!changed.length) return prev; // nothing to do
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      Promise.all(changed.map((c) => api.updateCategory(c.id, { feedIds: c.feedIds }).catch(() => {})));
+      return next;
+    });
+  }, []);
+
+  return { categories, addCategory, renameCategory, deleteCategory, assignFeed, unassignFeed, categoryOfFeed, cleanupStaleIds };
 }

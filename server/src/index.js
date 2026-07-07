@@ -5,6 +5,7 @@ import feedsRouter from './routes/feeds.js';
 import categoriesRouter from './routes/categories.js';
 import articleContentRouter from './routes/articleContent.js';
 import suggestionsRouter from './routes/suggestions.js';
+import dailyPicksRouter from './routes/dailyPicks.js';
 
 const app = express();
 const PORT = process.env.PORT ?? 3001;
@@ -30,6 +31,7 @@ app.use('/api/feeds', feedsRouter);
 app.use('/api/categories', categoriesRouter);
 app.use('/api/article-content', articleContentRouter);
 app.use('/api/suggestions', suggestionsRouter);
+app.use('/api/daily-picks', dailyPicksRouter);
 
 app.get('/health', (_, res) => res.json({ ok: true }));
 

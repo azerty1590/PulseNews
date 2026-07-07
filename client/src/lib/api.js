@@ -109,4 +109,16 @@ export const api = {
     fetch(`${BASE}/feeds/discover?url=${encodeURIComponent(url)}`).then(json),
 
   getSuggestions: () => fetch(`${BASE}/suggestions`).then(json),
+
+  getDailyPicks: (categoryNames = []) => {
+    const q = categoryNames.length ? `?categories=${encodeURIComponent(categoryNames.join(','))}` : '';
+    return fetchJSON(`${BASE}/daily-picks${q}`);
+  },
+
+  refreshDailyPicks: (categoryNames = []) =>
+    fetch(`${BASE}/daily-picks/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ categories: categoryNames }),
+    }).then(json),
 };

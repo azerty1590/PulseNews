@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { DragDropContext, Droppable } from '@hello-pangea/dnd';
 import { useFeeds } from '../hooks/useFeeds.js';
 import { useCategories } from '../hooks/useCategories.js';
@@ -86,7 +86,7 @@ function ServerStatus({ status, ms }) {
 /* ════════════════════════════════════════════════════════════════════════ */
 export default function Dashboard() {
   const { feeds, loading, error, addFeed, deleteFeed, reorderFeeds, renameFeed } = useFeeds();
-  const { categories, addCategory, renameCategory, deleteCategory, assignFeed, unassignFeed, categoryOfFeed } = useCategories();
+  const { categories, addCategory, renameCategory, deleteCategory, assignFeed, unassignFeed, categoryOfFeed, cleanupStaleIds } = useCategories();
   const isMobile = useIsMobile();
 
   const [showModal,        setShowModal]        = useState(false);
@@ -111,6 +111,16 @@ export default function Dashboard() {
   function setDensityP(v)      { setDensity(v);          localStorage.setItem('newsboard:density', v); }
   function setAutoRefreshP(v)  { setAutoRefresh(v);      localStorage.setItem('newsboard:autorefresh', v); }
   function setUnreadOnlyP(v)   { setUnreadOnly(v);        localStorage.setItem('newsboard:unreadonly', v); }
+
+  // Once feeds finish loading, strip any category feedIds that reference non-existent feeds.
+  // This self-heals Firestore data corrupted during a past cold-start/in-memory-store episode.
+  const cleanupDone = useRef(false);
+  useEffect(() => {
+    if (!loading && feeds.length > 0 && categories.length > 0 && !cleanupDone.current) {
+      cleanupDone.current = true;
+      cleanupStaleIds(feeds.map((f) => f.id));
+    }
+  }, [loading, feeds, categories, cleanupStaleIds]);
 
   const totalNew = useTitleCount();
   const { status: serverStatus, ms: serverMs } = useServerStatus();

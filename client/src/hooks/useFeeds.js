@@ -7,6 +7,9 @@ function loadLocal() {
   try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) ?? []; } catch { return []; }
 }
 
+// Shared: after a restore pass, other hooks can read the old→new ID map.
+export const feedIdRemap = { current: null }; // Map<oldId, newId> | null
+
 export function useFeeds() {
   const [feeds, setFeeds] = useState(loadLocal);
   const [loading, setLoading] = useState(true);
@@ -22,20 +25,24 @@ export function useFeeds() {
         feedsRef.current = data;
         setFeeds(data);
         localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        feedIdRemap.current = null; // server has authoritative data, no remap needed
       } else {
         // Server is empty — restore from localStorage back to server
         const local = loadLocal();
         if (local.length > 0) {
+          const remap = new Map(); // oldId → newId
           const restored = [];
           for (const f of local) {
             try {
               const created = await api.addFeed(f.url, f.label);
+              remap.set(f.id, created.id);
               restored.push(created);
             } catch { restored.push(f); }
           }
           feedsRef.current = restored;
           setFeeds(restored);
           localStorage.setItem(STORAGE_KEY, JSON.stringify(restored));
+          feedIdRemap.current = remap; // expose so useCategories can remap feedIds
         }
       }
     } catch (e) {
