@@ -96,18 +96,21 @@ function SkeletonCard() {
   );
 }
 
-function SuggestionCard({ s, onAdd, onRemove, isAdding, isRemoving, isAdded, isFollowed }) {
+function SuggestionCard({ s, onAdd, onRemove, onDismiss, isAdding, isRemoving, isAdded, isFollowed }) {
   let feedUrl = s.feedUrl ?? s.url ?? '';
+  let siteUrl = s.url ?? feedUrl;
   let domain = '';
   try { domain = new URL(feedUrl).hostname; } catch {}
 
   const following = isFollowed && !isAdded;
 
   return (
-    <div className={`rounded-2xl border bg-surface-1 p-4 flex flex-col gap-3 transition-colors ${following ? 'border-indigo-500/20' : 'border-white/[0.07]'}`}>
+    <div className={`group/card rounded-2xl border bg-surface-1 p-4 flex flex-col gap-3 transition-colors ${following ? 'border-indigo-500/20' : 'border-white/[0.07]'}`}>
       <div className="flex items-center gap-2.5">
-        <FaviconOrFallback url={feedUrl} label={s.label} />
-        <span className="text-sm font-semibold text-white/85 truncate flex-1 min-w-0">{s.label ?? domain}</span>
+        <a href={siteUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2.5 flex-1 min-w-0 hover:opacity-80 transition-opacity">
+          <FaviconOrFallback url={feedUrl} label={s.label} />
+          <span className="text-sm font-semibold text-white/85 truncate">{s.label ?? domain}</span>
+        </a>
         <div className="flex items-center gap-1.5 flex-shrink-0">
           {s.isNew && (
             <span className="text-[10px] font-medium rounded-full px-1.5 py-0.5 bg-emerald-500/15 text-emerald-400 leading-none">
@@ -115,6 +118,17 @@ function SuggestionCard({ s, onAdd, onRemove, isAdding, isRemoving, isAdded, isF
             </span>
           )}
           <QualityDots quality={s.quality} />
+          {!following && !isAdded && (
+            <button
+              onClick={() => onDismiss(s)}
+              title="Not interested"
+              className="opacity-0 group-hover/card:opacity-100 transition-opacity rounded p-0.5 text-white/20 hover:text-white/50"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="h-3.5 w-3.5">
+                <path d="M5.28 4.22a.75.75 0 0 0-1.06 1.06L6.94 8l-2.72 2.72a.75.75 0 1 0 1.06 1.06L8 9.06l2.72 2.72a.75.75 0 1 0 1.06-1.06L9.06 8l2.72-2.72a.75.75 0 0 0-1.06-1.06L8 6.94 5.28 4.22Z" />
+              </svg>
+            </button>
+          )}
         </div>
       </div>
 
@@ -125,10 +139,7 @@ function SuggestionCard({ s, onAdd, onRemove, isAdding, isRemoving, isAdded, isF
       <div className="flex items-center justify-between gap-2 mt-auto">
         <div className="flex gap-1 flex-wrap">
           {(s.tags ?? []).slice(0, 3).map((tag) => (
-            <span
-              key={tag}
-              className="text-[10px] rounded-full px-2 py-0.5 bg-white/[0.05] text-white/30 leading-none"
-            >
+            <span key={tag} className="text-[10px] rounded-full px-2 py-0.5 bg-white/[0.05] text-white/30 leading-none">
               {tag}
             </span>
           ))}
@@ -175,6 +186,10 @@ export default function DiscoverPanel({ feeds, categories = [], onAdd, onRemove 
   const [adding, setAdding] = useState(new Set());
   const [added, setAdded] = useState(new Set());
   const [removing, setRemoving] = useState(new Set());
+  const [dismissed, setDismissed] = useState(() => {
+    try { return new Set(JSON.parse(localStorage.getItem('discover:dismissed') ?? '[]')); }
+    catch { return new Set(); }
+  });
   const [toastMsg, setToastMsg] = useState(null);
 
   const followedUrls = new Set(feeds.map((f) => f.url ?? f.feedUrl ?? '').filter(Boolean));
@@ -210,7 +225,7 @@ export default function DiscoverPanel({ feeds, categories = [], onAdd, onRemove 
   const filtered = (activeTag === 'all'
     ? suggestions
     : suggestions.filter((s) => (s.tags ?? []).includes(activeTag))
-  ).slice(0, 50);
+  ).filter((s) => !dismissed.has(s.feedUrl ?? s.url ?? '')).slice(0, 50);
 
   async function handleAdd(s) {
     const feedUrl = s.feedUrl ?? s.url ?? '';
@@ -225,6 +240,15 @@ export default function DiscoverPanel({ feeds, categories = [], onAdd, onRemove 
     } finally {
       setAdding((prev) => { const next = new Set(prev); next.delete(feedUrl); return next; });
     }
+  }
+
+  function handleDismiss(s) {
+    const feedUrl = s.feedUrl ?? s.url ?? '';
+    setDismissed((prev) => {
+      const next = new Set(prev).add(feedUrl);
+      localStorage.setItem('discover:dismissed', JSON.stringify([...next]));
+      return next;
+    });
   }
 
   async function handleRemove(s) {
@@ -304,6 +328,7 @@ export default function DiscoverPanel({ feeds, categories = [], onAdd, onRemove 
                 s={s}
                 onAdd={handleAdd}
                 onRemove={handleRemove}
+                onDismiss={handleDismiss}
                 isAdding={adding.has(feedUrl)}
                 isRemoving={removing.has(feedUrl)}
                 isAdded={added.has(feedUrl)}
