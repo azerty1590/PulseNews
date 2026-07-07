@@ -44,22 +44,25 @@ function bustCache() {
 async function upsertSeeds() {
   if (!useFirebase) return 0;
 
+  // Fetch all existing feedUrls in one query instead of N individual queries
+  const existing = await col().select('feedUrl').get();
+  const knownUrls = new Set(existing.docs.map((d) => d.data().feedUrl));
+
+  const toAdd = SEEDS.filter((s) => !knownUrls.has(s.feedUrl));
+  if (toAdd.length === 0) return 0;
+
+  // Write in batches of 500 (Firestore batch limit)
+  const now = new Date().toISOString();
   let seeded = 0;
-  for (const seed of SEEDS) {
-    const snap = await col()
-      .where('feedUrl', '==', seed.feedUrl)
-      .limit(1)
-      .get();
-    if (snap.empty) {
-      await col().add({
-        ...seed,
-        active: true,
-        addedAt: new Date().toISOString(),
-      });
+  for (let i = 0; i < toAdd.length; i += 500) {
+    const batch = db.batch();
+    for (const seed of toAdd.slice(i, i + 500)) {
+      batch.set(col().doc(), { ...seed, active: true, addedAt: now });
       seeded++;
     }
+    await batch.commit();
   }
-  if (seeded > 0) console.log(`Seeded ${seeded} suggestions`);
+  console.log(`Seeded ${seeded} suggestions`);
   return seeded;
 }
 
@@ -88,11 +91,14 @@ function memList() {
 }
 
 async function firestoreList() {
-  const snap = await col().where('active', '==', true).orderBy('addedAt', 'desc').get();
-  return snap.docs.map((d) => {
-    const { label, url, feedUrl, description, tags, quality, addedAt } = d.data();
-    return { id: d.id, label, url, feedUrl, description, tags, quality, addedAt };
-  });
+  // No orderBy — avoids needing a composite index. Client sorts by addedAt.
+  const snap = await col().where('active', '==', true).get();
+  return snap.docs
+    .map((d) => {
+      const { label, url, feedUrl, description, tags, quality, addedAt } = d.data();
+      return { id: d.id, label, url, feedUrl, description, tags, quality, addedAt };
+    })
+    .sort((a, b) => (a.addedAt < b.addedAt ? 1 : -1));
 }
 
 // ── Routes ────────────────────────────────────────────────────────────────────
