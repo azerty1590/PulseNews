@@ -11,27 +11,48 @@ async function json(res) {
   return data;
 }
 
-// GET with retry: retries when the server is sleeping (returns non-JSON / 502 / 503).
-// Render free tier wakes on first request but returns an HTML splash page — that
-// parses as null, so we treat null-parsed responses the same as 5xx and retry.
-async function fetchJSON(url, attempts = 4) {
+// GET with retry — handles Render free-tier cold starts.
+// Render wakes on first request but may return a 502/503 OR a 200 with an HTML
+// splash page (non-JSON). We retry both cases with linear backoff.
+async function fetchJSON(url, attempts = 8) {
+  let lastErr = 'Server unavailable';
   for (let i = 0; i < attempts; i++) {
-    const res = await fetch(url);
-    // Always retry on gateway errors
-    if (res.status === 502 || res.status === 503) {
-      if (i < attempts - 1) { await delay(3000 * (i + 1)); continue; }
-      throw new Error('Server unavailable after retries');
+    try {
+      const res = await fetch(url);
+      if (res.status === 502 || res.status === 503) {
+        lastErr = 'Server waking up…';
+        if (i < attempts - 1) { await delay(2000 + i * 1000); continue; }
+        break;
+      }
+      const text = await res.text();
+      let data;
+      try { data = JSON.parse(text); } catch { data = null; }
+      if (data === null && res.ok) {
+        lastErr = 'Server waking up…';
+        if (i < attempts - 1) { await delay(2000 + i * 1000); continue; }
+        break;
+      }
+      if (!res.ok) throw new Error(data?.error ?? (text.slice(0, 120) || res.statusText));
+      return data;
+    } catch (e) {
+      if (e.message && !e.message.includes('waking')) throw e; // real error, don't retry
+      if (i < attempts - 1) await delay(2000 + i * 1000);
     }
-    const text = await res.text();
-    let data;
-    try { data = JSON.parse(text); } catch { data = null; }
-    // Retry if we got a 200 but with non-JSON body (Render wake-up HTML splash)
-    if (data === null && res.ok) {
-      if (i < attempts - 1) { await delay(3000 * (i + 1)); continue; }
-      throw new Error('Server is starting up, please refresh in a moment');
-    }
-    if (!res.ok) throw new Error(data?.error ?? (text.slice(0, 120) || res.statusText));
-    return data;
+  }
+  throw new Error(lastErr);
+}
+
+const API_BASE_URL = (import.meta.env.VITE_API_BASE ?? '');
+
+// Used by the status indicator — single fast ping, no retry
+export async function checkHealth() {
+  const t = Date.now();
+  try {
+    const res = await fetch(`${API_BASE_URL}/health`, { signal: AbortSignal.timeout(5000) });
+    if (!res.ok) return { ok: false, ms: Date.now() - t };
+    return { ok: true, ms: Date.now() - t };
+  } catch {
+    return { ok: false, ms: null };
   }
 }
 

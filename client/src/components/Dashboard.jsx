@@ -13,6 +13,7 @@ import { useStarred } from '../hooks/useStarred.js';
 import StarredPanel from './StarredPanel.jsx';
 import ArticlePreviewPanel from './ArticlePreviewPanel.jsx';
 import { useTitleCount } from '../hooks/useTitleCount.js';
+import { useServerStatus } from '../hooks/useServerStatus.js';
 
 /* ── icons ── */
 const Svg = ({ d, size = 'h-4 w-4' }) => (
@@ -61,6 +62,27 @@ function EmptyState({ onAdd }) {
   );
 }
 
+/* ── server status dot ── */
+function ServerStatus({ status, ms }) {
+  const cfg = {
+    checking: { dot: 'bg-white/20 animate-pulse',    label: 'Connecting…',              tip: 'Connecting to server…' },
+    online:   { dot: 'bg-emerald-400',               label: null,                       tip: `Server online${ms ? ` · ${ms}ms` : ''}` },
+    slow:     { dot: 'bg-amber-400 animate-pulse',   label: `${ms}ms`,                  tip: `Server responding slowly (${ms}ms)` },
+    offline:  { dot: 'bg-red-400 animate-pulse',     label: 'Server offline',           tip: 'Cannot reach server — it may be starting up (Render free tier sleeps after 15 min idle). Wait ~30s and refresh.' },
+  }[status] ?? { dot: 'bg-white/20', label: null, tip: '' };
+
+  return (
+    <div className="flex items-center gap-1.5 px-1" title={cfg.tip}>
+      <span className={`h-2 w-2 rounded-full shrink-0 ${cfg.dot}`} />
+      {cfg.label && (
+        <span className={`text-[10px] font-medium hidden sm:inline ${status === 'offline' ? 'text-red-400' : status === 'slow' ? 'text-amber-400' : 'text-white/30'}`}>
+          {cfg.label}
+        </span>
+      )}
+    </div>
+  );
+}
+
 /* ════════════════════════════════════════════════════════════════════════ */
 export default function Dashboard() {
   const { feeds, loading, error, addFeed, deleteFeed, reorderFeeds, renameFeed } = useFeeds();
@@ -91,6 +113,7 @@ export default function Dashboard() {
   function setUnreadOnlyP(v)   { setUnreadOnly(v);        localStorage.setItem('newsboard:unreadonly', v); }
 
   const totalNew = useTitleCount();
+  const { status: serverStatus, ms: serverMs } = useServerStatus();
   useEffect(() => {
     document.title = totalNew > 0 ? `(${totalNew} new) Pulse` : 'Pulse — News Reader';
   }, [totalNew]);
@@ -174,6 +197,9 @@ export default function Dashboard() {
 
             {/* ml-auto pushes everything right on mobile */}
             <div className="flex-1 sm:hidden" />
+
+            {/* Server status indicator */}
+            <ServerStatus status={serverStatus} ms={serverMs} />
 
             {/* Starred / bookmarks */}
             <button
