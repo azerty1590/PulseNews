@@ -18,7 +18,7 @@ const col = () => db.collection(process.env.FIRESTORE_CATS_COLLECTION ?? 'catego
 
 async function listCats() {
   if (useFirebase) {
-    const snap = await col().orderBy('createdAt').get();
+    const snap = await col().get();
     return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
   }
   return catStore.list();

@@ -8,7 +8,21 @@ import articleContentRouter from './routes/articleContent.js';
 const app = express();
 const PORT = process.env.PORT ?? 3001;
 
-app.use(cors({ origin: process.env.CLIENT_ORIGIN ?? 'http://localhost:5173' }));
+const allowedOrigins = [
+  process.env.CLIENT_ORIGIN ?? 'http://localhost:5173',
+  'http://localhost:5173',
+  'http://localhost:4173',
+  // Firebase Hosting always provides two domains
+  'https://pulse-news-17d37.web.app',
+  'https://pulse-news-17d37.firebaseapp.com',
+];
+app.use(cors({
+  origin: (origin, cb) => {
+    // Allow requests with no origin (curl, Render health checks) and known origins
+    if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
+    cb(new Error(`CORS: origin ${origin} not allowed`));
+  },
+}));
 app.use(express.json());
 
 app.use('/api/feeds', feedsRouter);
