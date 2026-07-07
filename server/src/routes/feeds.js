@@ -166,8 +166,23 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-const articleCache = new Map(); // id → { data, expiresAt }
-const CACHE_TTL_MS = 5 * 60_000; // 5 minutes
+// Cache: serve fresh for 15 min, stale-while-revalidate up to 60 min
+const articleCache = new Map(); // id → { data, fetchedAt }
+const FRESH_MS = 15 * 60_000;
+const STALE_MS = 60 * 60_000;
+
+// In-flight deduplication: if multiple requests come in for the same feed
+// while it's being fetched, they all wait for the same promise.
+const inFlight = new Map(); // id → Promise<data>
+
+async function fetchAndCache(id, url) {
+  if (inFlight.has(id)) return inFlight.get(id);
+  const promise = fetchFeed(url)
+    .then((data) => { articleCache.set(id, { data, fetchedAt: Date.now() }); return data; })
+    .finally(() => inFlight.delete(id));
+  inFlight.set(id, promise);
+  return promise;
+}
 
 router.get('/:id/articles', articlesLimiter, async (req, res) => {
   try {
@@ -176,14 +191,26 @@ router.get('/:id/articles', articlesLimiter, async (req, res) => {
 
     const bust = req.query.bust === '1';
     const cached = articleCache.get(req.params.id);
-    if (!bust && cached && cached.expiresAt > Date.now()) {
+    const age = cached ? Date.now() - cached.fetchedAt : Infinity;
+
+    // Fresh cache hit — return immediately
+    if (!bust && cached && age < FRESH_MS) {
       return res.json(cached.data);
     }
 
-    const data = await fetchFeed(feed.url);
-    articleCache.set(req.params.id, { data, expiresAt: Date.now() + CACHE_TTL_MS });
+    // Stale cache — return immediately and revalidate in background
+    if (!bust && cached && age < STALE_MS) {
+      fetchAndCache(req.params.id, feed.url).catch(() => {});
+      return res.json(cached.data);
+    }
+
+    // No cache or bust — fetch and wait
+    const data = await fetchAndCache(req.params.id, feed.url);
     res.json(data);
   } catch (err) {
+    // If we have any stale cache, return it rather than an error
+    const cached = articleCache.get(req.params.id);
+    if (cached) return res.json(cached.data);
     console.error(err);
     res.status(500).json({ error: err.message ?? 'Failed to fetch articles' });
   }
