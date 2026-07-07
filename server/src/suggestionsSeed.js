@@ -1,5 +1,5 @@
-export const SEEDS = [
-  // ─── TECH / DEV ───────────────────────────────────────────────────────────
+﻿export const SEEDS = [
+  // --- TECH / DEV -----------------------------------------------------------
   {
     label: 'Hacker News',
     url: 'https://news.ycombinator.com',
@@ -76,7 +76,7 @@ export const SEEDS = [
     label: 'The Register',
     url: 'https://www.theregister.com',
     feedUrl: 'https://www.theregister.com/headlines.atom',
-    description: 'Sardonic British tech reporting — enterprise, cloud, and security with genuine wit.',
+    description: 'Sardonic British tech reporting - enterprise, cloud, and security with genuine wit.',
     tags: ['tech', 'news', 'security'],
     quality: 2,
   },
@@ -228,7 +228,7 @@ export const SEEDS = [
     label: "Lenny's Newsletter",
     url: 'https://www.lennysnewsletter.com',
     feedUrl: 'https://www.lennysnewsletter.com/feed',
-    description: 'Product management and growth tactics from a former Airbnb PM — practical and data-driven.',
+    description: 'Product management and growth tactics from a former Airbnb PM - practical and data-driven.',
     tags: ['business', 'productivity'],
     quality: 2,
   },
@@ -324,7 +324,7 @@ export const SEEDS = [
     label: 'Hashnode',
     url: 'https://hashnode.com',
     feedUrl: 'https://hashnode.com/community/feed.rss',
-    description: 'Developer-owned blogs on a federated platform — good for niche deep-dives.',
+    description: 'Developer-owned blogs on a federated platform - good for niche deep-dives.',
     tags: ['dev', 'web'],
     quality: 1,
   },
@@ -372,7 +372,7 @@ export const SEEDS = [
     label: 'Go Weekly',
     url: 'https://golangweekly.com',
     feedUrl: 'https://golangweekly.com/rss/1a1a0847',
-    description: 'The authoritative weekly digest for Go developers — releases, articles, and projects.',
+    description: 'The authoritative weekly digest for Go developers - releases, articles, and projects.',
     tags: ['dev'],
     quality: 2,
   },
@@ -481,7 +481,7 @@ export const SEEDS = [
     quality: 2,
   },
 
-  // ─── AI / ML ─────────────────────────────────────────────────────────────
+  // --- AI / ML -------------------------------------------------------------
   {
     label: 'OpenAI Blog',
     url: 'https://openai.com/blog',
@@ -526,7 +526,7 @@ export const SEEDS = [
     label: 'fast.ai',
     url: 'https://www.fast.ai',
     feedUrl: 'https://www.fast.ai/index.xml',
-    description: "Jeremy Howard's democratized take on deep learning — opinionated, practical, and free.",
+    description: "Jeremy Howard's democratized take on deep learning - opinionated, practical, and free.",
     tags: ['ai', 'dev'],
     quality: 3,
   },
@@ -566,7 +566,7 @@ export const SEEDS = [
     label: 'Papers With Code',
     url: 'https://paperswithcode.com',
     feedUrl: 'https://paperswithcode.com/rss.xml',
-    description: 'ML papers ranked by GitHub stars — the fastest way to track what research is getting reproduced.',
+    description: 'ML papers ranked by GitHub stars - the fastest way to track what research is getting reproduced.',
     tags: ['ai', 'dev'],
     quality: 3,
   },
@@ -598,7 +598,7 @@ export const SEEDS = [
     label: 'LessWrong',
     url: 'https://www.lesswrong.com',
     feedUrl: 'https://www.lesswrong.com/feed.xml',
-    description: 'Rationality and AI risk discussion — dense, rigorous, and occasionally prescient.',
+    description: 'Rationality and AI risk discussion - dense, rigorous, and occasionally prescient.',
     tags: ['ai', 'tech'],
     quality: 2,
   },
@@ -622,7 +622,7 @@ export const SEEDS = [
     label: 'ML News (Yannic Kilcher)',
     url: 'https://www.youtube.com/@YannicKilcher',
     feedUrl: 'https://www.youtube.com/feeds/videos.xml?channel_id=UCZHmQk67mSJgfCCTn7xBfew',
-    description: 'Yannic Kilcher paper walkthroughs — the gold standard for understanding cutting-edge ML research.',
+    description: 'Yannic Kilcher paper walkthroughs - the gold standard for understanding cutting-edge ML research.',
     tags: ['ai', 'youtube'],
     quality: 3,
   },
@@ -654,7 +654,7 @@ export const SEEDS = [
     label: 'BAIR Blog',
     url: 'https://bair.berkeley.edu/blog',
     feedUrl: 'https://bair.berkeley.edu/blog/feed.xml',
-    description: 'Berkeley AI Research on robotics, RL, NLP, and computer vision — academically rigorous.',
+    description: 'Berkeley AI Research on robotics, RL, NLP, and computer vision - academically rigorous.',
     tags: ['ai', 'science'],
     quality: 3,
   },
@@ -683,7 +683,7 @@ export const SEEDS = [
     quality: 3,
   },
 
-  // ─── DESIGN / UX ─────────────────────────────────────────────────────────
+  // --- DESIGN / UX ---------------------------------------------------------
   {
     label: 'A List Apart',
     url: 'https://alistapart.com',
@@ -704,7 +704,7 @@ export const SEEDS = [
     label: 'UX Collective',
     url: 'https://uxdesign.cc',
     feedUrl: 'https://uxdesign.cc/feed',
-    description: 'Curated UX articles from practitioners — strong on research methods and case studies.',
+    description: 'Curated UX articles from practitioners - strong on research methods and case studies.',
     tags: ['design'],
     quality: 2,
   },
@@ -765,7 +765,7 @@ export const SEEDS = [
     quality: 1,
   },
   {
-    label: 'Stéphanie Walter',
+    label: 'Stephanie Walter',
     url: 'https://stephaniewalter.design/blog/',
     feedUrl: 'https://stephaniewalter.design/feed/',
     description: 'High-quality UX research, mobile design, and conference presentation resources.',
@@ -784,12 +784,12 @@ export const SEEDS = [
     label: 'Muzli Design Inspiration',
     url: 'https://muz.li',
     feedUrl: 'https://muz.li/feed/',
-    description: 'Daily curated visual design inspiration from across the web — quick dopamine for designers.',
+    description: 'Daily curated visual design inspiration from across the web - quick dopamine for designers.',
     tags: ['design'],
     quality: 1,
   },
 
-  // ─── SCIENCE ─────────────────────────────────────────────────────────────
+  // --- SCIENCE -------------------------------------------------------------
   {
     label: 'NASA Breaking News',
     url: 'https://www.nasa.gov',
@@ -826,7 +826,7 @@ export const SEEDS = [
     label: 'Quanta Magazine',
     url: 'https://www.quantamagazine.org',
     feedUrl: 'https://www.quantamagazine.org/feed/',
-    description: 'The best science journalism on the internet — physics, math, and biology made gripping.',
+    description: 'The best science journalism on the internet - physics, math, and biology made gripping.',
     tags: ['science', 'ai'],
     quality: 3,
   },
@@ -866,7 +866,7 @@ export const SEEDS = [
     label: 'arXiv CS New Submissions',
     url: 'https://arxiv.org',
     feedUrl: 'https://rss.arxiv.org/rss/cs.LG',
-    description: 'Raw firehose of new machine learning preprints — unfiltered research before peer review.',
+    description: 'Raw firehose of new machine learning preprints - unfiltered research before peer review.',
     tags: ['ai', 'science'],
     quality: 2,
   },
@@ -874,7 +874,7 @@ export const SEEDS = [
     label: 'Physics Today',
     url: 'https://physicstoday.scitation.org',
     feedUrl: 'https://physicstoday.scitation.org/action/showFeed?type=etoc&feed=rss&jc=pto',
-    description: 'The flagship magazine of the American Institute of Physics — accessible to specialists.',
+    description: 'The flagship magazine of the American Institute of Physics - accessible to specialists.',
     tags: ['science'],
     quality: 2,
   },
@@ -890,12 +890,12 @@ export const SEEDS = [
     label: 'Eos (AGU)',
     url: 'https://eos.org',
     feedUrl: 'https://eos.org/feed',
-    description: 'Earth and space science news from the American Geophysical Union — climate, oceans, geology.',
+    description: 'Earth and space science news from the American Geophysical Union - climate, oceans, geology.',
     tags: ['science', 'space'],
     quality: 2,
   },
 
-  // ─── SECURITY ─────────────────────────────────────────────────────────────
+  // --- SECURITY -------------------------------------------------------------
   {
     label: 'Krebs on Security',
     url: 'https://krebsonsecurity.com',
@@ -948,7 +948,7 @@ export const SEEDS = [
     label: 'PortSwigger Research',
     url: 'https://portswigger.net/research',
     feedUrl: 'https://portswigger.net/research/rss',
-    description: 'Web application security research from the Burp Suite makers — novel attack techniques.',
+    description: 'Web application security research from the Burp Suite makers - novel attack techniques.',
     tags: ['security', 'web'],
     quality: 3,
   },
@@ -985,7 +985,7 @@ export const SEEDS = [
     quality: 2,
   },
 
-  // ─── LINUX / OSS ─────────────────────────────────────────────────────────
+  // --- LINUX / OSS ---------------------------------------------------------
   {
     label: 'LWN.net',
     url: 'https://lwn.net',
@@ -998,7 +998,7 @@ export const SEEDS = [
     label: 'Phoronix',
     url: 'https://www.phoronix.com',
     feedUrl: 'https://www.phoronix.com/rss.php',
-    description: 'Linux hardware benchmarks, driver releases, and kernel patch coverage — obsessive detail.',
+    description: 'Linux hardware benchmarks, driver releases, and kernel patch coverage - obsessive detail.',
     tags: ['linux', 'tech'],
     quality: 2,
   },
@@ -1046,7 +1046,7 @@ export const SEEDS = [
     label: 'KDE Planet',
     url: 'https://planet.kde.org',
     feedUrl: 'https://planet.kde.org/rss20.xml',
-    description: 'Aggregated developer blogs from across the KDE community — technical and personal.',
+    description: 'Aggregated developer blogs from across the KDE community - technical and personal.',
     tags: ['linux', 'oss'],
     quality: 1,
   },
@@ -1078,12 +1078,12 @@ export const SEEDS = [
     label: 'Linux Journal',
     url: 'https://www.linuxjournal.com',
     feedUrl: 'https://www.linuxjournal.com/node/feed',
-    description: 'Long-running publication for Linux professionals — tutorials, command-line tricks, and commentary.',
+    description: 'Long-running publication for Linux professionals - tutorials, command-line tricks, and commentary.',
     tags: ['linux', 'dev'],
     quality: 1,
   },
 
-  // ─── BUSINESS / FINANCE ──────────────────────────────────────────────────
+  // --- BUSINESS / FINANCE --------------------------------------------------
   {
     label: 'Benedict Evans',
     url: 'https://www.ben-evans.com',
@@ -1120,7 +1120,7 @@ export const SEEDS = [
     label: 'Axios',
     url: 'https://www.axios.com',
     feedUrl: 'https://api.axios.com/feed/',
-    description: 'Smart brevity format for business, tech, and politics — maximum signal per word.',
+    description: 'Smart brevity format for business, tech, and politics - maximum signal per word.',
     tags: ['news', 'business', 'tech'],
     quality: 2,
   },
@@ -1197,12 +1197,12 @@ export const SEEDS = [
     quality: 2,
   },
 
-  // ─── GAMING ──────────────────────────────────────────────────────────────
+  // --- GAMING --------------------------------------------------------------
   {
     label: 'Kotaku',
     url: 'https://kotaku.com',
     feedUrl: 'https://kotaku.com/rss',
-    description: 'Games culture journalism — industry criticism, leaked news, and labor coverage.',
+    description: 'Games culture journalism - industry criticism, leaked news, and labor coverage.',
     tags: ['gaming', 'news'],
     quality: 2,
   },
@@ -1271,12 +1271,12 @@ export const SEEDS = [
     quality: 2,
   },
 
-  // ─── SPACE ───────────────────────────────────────────────────────────────
+  // --- SPACE ---------------------------------------------------------------
   {
     label: 'NASA JPL News',
     url: 'https://www.jpl.nasa.gov/news',
     feedUrl: 'https://www.jpl.nasa.gov/feeds/news',
-    description: "Robotic mission updates — Mars rovers, Voyager telemetry, and JPL's deep space science.",
+    description: "Robotic mission updates - Mars rovers, Voyager telemetry, and JPL's deep space science.",
     tags: ['space', 'science'],
     quality: 3,
   },
@@ -1308,7 +1308,7 @@ export const SEEDS = [
     label: 'The Planetary Society',
     url: 'https://www.planetary.org',
     feedUrl: 'https://www.planetary.org/articles.rss',
-    description: 'Space advocacy, mission science, and planetary defense updates from Carl Sagan's org.',
+    description: "Space advocacy, mission science, and planetary defense updates from Carl Sagan's org.",
     tags: ['space', 'science'],
     quality: 2,
   },
@@ -1345,7 +1345,7 @@ export const SEEDS = [
     quality: 2,
   },
 
-  // ─── HEALTH / SCIENCE ────────────────────────────────────────────────────
+  // --- HEALTH / SCIENCE ----------------------------------------------------
   {
     label: 'NIH News in Health',
     url: 'https://newsinhealth.nih.gov',
@@ -1366,7 +1366,7 @@ export const SEEDS = [
     label: 'Harvard Health Blog',
     url: 'https://www.health.harvard.edu/blog',
     feedUrl: 'https://www.health.harvard.edu/blog/feed',
-    description: 'Evidence-based health advice from Harvard Medical School faculty — clinical and nuanced.',
+    description: 'Evidence-based health advice from Harvard Medical School faculty - clinical and nuanced.',
     tags: ['health'],
     quality: 2,
   },
@@ -1374,7 +1374,7 @@ export const SEEDS = [
     label: 'Science-Based Medicine',
     url: 'https://sciencebasedmedicine.org',
     feedUrl: 'https://sciencebasedmedicine.org/feed/',
-    description: 'Rigorous critical appraisal of medical claims — the antidote to health misinformation.',
+    description: 'Rigorous critical appraisal of medical claims - the antidote to health misinformation.',
     tags: ['health', 'science'],
     quality: 3,
   },
@@ -1406,7 +1406,7 @@ export const SEEDS = [
     label: 'The BMJ',
     url: 'https://www.bmj.com',
     feedUrl: 'https://www.bmj.com/rss/current.xml',
-    description: 'One of the world's oldest medical journals — peer-reviewed research and editorials.',
+    description: "One of the world's oldest medical journals - peer-reviewed research and editorials.",
     tags: ['health', 'science'],
     quality: 3,
   },
@@ -1419,12 +1419,12 @@ export const SEEDS = [
     quality: 3,
   },
 
-  // ─── YOUTUBE CHANNELS ────────────────────────────────────────────────────
+  // --- YOUTUBE CHANNELS ----------------------------------------------------
   {
     label: 'Computerphile',
     url: 'https://www.youtube.com/@Computerphile',
     feedUrl: 'https://www.youtube.com/feeds/videos.xml?channel_id=UC9-y-6csu5WGm29I7JiwpnA',
-    description: 'University of Nottingham professors explain CS concepts — algorithms, cryptography, compilers.',
+    description: 'University of Nottingham professors explain CS concepts - algorithms, cryptography, compilers.',
     tags: ['tech', 'dev', 'youtube'],
     quality: 3,
   },
@@ -1448,7 +1448,7 @@ export const SEEDS = [
     label: '3Blue1Brown',
     url: 'https://www.youtube.com/@3blue1brown',
     feedUrl: 'https://www.youtube.com/feeds/videos.xml?channel_id=UCYO_jab_esuFRV4b17AJtAg',
-    description: 'The most beautiful math visualizations on the internet — linear algebra, calculus, and AI explained.',
+    description: 'The most beautiful math visualizations on the internet - linear algebra, calculus, and AI explained.',
     tags: ['science', 'ai', 'youtube'],
     quality: 3,
   },
@@ -1456,7 +1456,7 @@ export const SEEDS = [
     label: 'Fireship',
     url: 'https://www.youtube.com/@Fireship',
     feedUrl: 'https://www.youtube.com/feeds/videos.xml?channel_id=UCsBjURrPoezykLs9EqgamOA',
-    description: '100-second tech explainers that are genuinely funny and accurate — essential developer content.',
+    description: '100-second tech explainers that are genuinely funny and accurate - essential developer content.',
     tags: ['dev', 'tech', 'youtube'],
     quality: 3,
   },
@@ -1464,7 +1464,7 @@ export const SEEDS = [
     label: 'TechLinked',
     url: 'https://www.youtube.com/@TechLinked',
     feedUrl: 'https://www.youtube.com/feeds/videos.xml?channel_id=UCeeFfhMcJa1kjtfZAGskOCA',
-    description: 'Fast-paced tech news from the Linus Media Group team — irreverent and well-researched.',
+    description: 'Fast-paced tech news from the Linus Media Group team - irreverent and well-researched.',
     tags: ['tech', 'news', 'youtube'],
     quality: 2,
   },
@@ -1480,7 +1480,7 @@ export const SEEDS = [
     label: 'MKBHD',
     url: 'https://www.youtube.com/@mkbhd',
     feedUrl: 'https://www.youtube.com/feeds/videos.xml?channel_id=UCBcRF18a7Qf58cCRy5xuWwQ',
-    description: 'The gold standard for smartphone and gadget reviews — cinematic quality, measured opinions.',
+    description: 'The gold standard for smartphone and gadget reviews - cinematic quality, measured opinions.',
     tags: ['tech', 'mobile', 'youtube'],
     quality: 2,
   },
@@ -1501,12 +1501,12 @@ export const SEEDS = [
     quality: 2,
   },
 
-  // ─── WRITING / PRODUCTIVITY ──────────────────────────────────────────────
+  // --- WRITING / PRODUCTIVITY ----------------------------------------------
   {
     label: 'Paul Graham (via RSS)',
     url: 'https://paulgraham.com',
     feedUrl: 'https://www.aaronsw.com/2002/feeds/pgessays.rss',
-    description: 'Mirrors PG essays in a reliable feed — foundational thinking on startups and ideas.',
+    description: 'Mirrors PG essays in a reliable feed - foundational thinking on startups and ideas.',
     tags: ['writing', 'business'],
     quality: 3,
   },
@@ -1538,7 +1538,7 @@ export const SEEDS = [
     label: 'Wait But Why',
     url: 'https://waitbutwhy.com',
     feedUrl: 'https://waitbutwhy.com/feed',
-    description: 'Massively long illustrated essays on existential topics — AI risk, procrastination, Elon Musk.',
+    description: 'Massively long illustrated essays on existential topics - AI risk, procrastination, Elon Musk.',
     tags: ['writing', 'tech', 'ai'],
     quality: 3,
   },
@@ -1554,7 +1554,7 @@ export const SEEDS = [
     label: 'Kottke.org',
     url: 'https://kottke.org',
     feedUrl: 'https://feeds.kottke.org/main',
-    description: 'Jason Kottke curating the interesting web since 1998 — eclectic, curious, and reliably good.',
+    description: 'Jason Kottke curating the interesting web since 1998 - eclectic, curious, and reliably good.',
     tags: ['writing', 'tech'],
     quality: 2,
   },
@@ -1575,7 +1575,7 @@ export const SEEDS = [
     quality: 2,
   },
 
-  // ─── CRYPTO / WEB3 ───────────────────────────────────────────────────────
+  // --- CRYPTO / WEB3 -------------------------------------------------------
   {
     label: 'Ethereum Foundation Blog',
     url: 'https://blog.ethereum.org',
@@ -1609,7 +1609,7 @@ export const SEEDS = [
     quality: 2,
   },
 
-  // ─── MOBILE ──────────────────────────────────────────────────────────────
+  // --- MOBILE --------------------------------------------------------------
   {
     label: 'Android Authority',
     url: 'https://www.androidauthority.com',
@@ -1630,7 +1630,7 @@ export const SEEDS = [
     label: 'MacStories',
     url: 'https://www.macstories.net',
     feedUrl: 'https://www.macstories.net/feed/',
-    description: 'Federico Viticci on iOS workflows, app design, and the Apple ecosystem — deeply opinionated.',
+    description: 'Federico Viticci on iOS workflows, app design, and the Apple ecosystem - deeply opinionated.',
     tags: ['mobile', 'productivity', 'design'],
     quality: 2,
   },
