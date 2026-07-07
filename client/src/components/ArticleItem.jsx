@@ -52,9 +52,17 @@ function PreviewBtn({ onPreview }) {
   - small    : title + time, small thumbnail (default)
   - detailed : large thumbnail, title + summary + time
 */
+function isToday(dateStr) {
+  if (!dateStr) return false;
+  const d = new Date(dateStr);
+  const n = new Date();
+  return d.getFullYear() === n.getFullYear() && d.getMonth() === n.getMonth() && d.getDate() === n.getDate();
+}
+
 export default function ArticleItem({ item, density = 'small', onToggleStar, isStarred = false, isRead = false, isFocused = false, onRead, onMarkUnread, onPreview }) {
   const rel  = relativeTime(item.pubDate);
   const full = fullDate(item.pubDate);
+  const fresh = isToday(item.pubDate);
 
   /* ── Compact ─────────────────────────────────────────────────────── */
   if (density === 'compact') {
@@ -64,7 +72,7 @@ export default function ArticleItem({ item, density = 'small', onToggleStar, isS
         target="_blank"
         rel="noopener noreferrer"
         onClick={onRead}
-        className={`group flex items-center gap-2 rounded-lg mx-2 px-2 py-1.5 hover:bg-white/[0.04] active:bg-white/[0.06] transition-all ${isRead ? 'opacity-40 hover:opacity-70' : ''} ${isFocused ? 'ring-1 ring-accent/40 bg-white/[0.05]' : ''}`}
+        className={`group flex items-center gap-2 rounded-lg mx-2 px-2 py-1.5 hover:bg-white/[0.04] active:bg-white/[0.06] transition-all ${fresh ? 'border-l-2 border-indigo-500/40 pl-1.5' : ''} ${isRead ? 'opacity-40 hover:opacity-70' : ''} ${isFocused ? 'ring-1 ring-accent/40 bg-white/[0.05]' : ''}`}
       >
         <span className="min-w-0 flex-1 truncate text-[12px] font-medium text-white/60 group-hover:text-white/85 transition-colors leading-none">
           {item.title}
@@ -87,7 +95,7 @@ export default function ArticleItem({ item, density = 'small', onToggleStar, isS
         target="_blank"
         rel="noopener noreferrer"
         onClick={onRead}
-        className={`group flex gap-3 rounded-xl mx-2 px-2 py-3 hover:bg-white/[0.04] active:bg-white/[0.06] transition-all border-b border-white/[0.04] last:border-0 ${isRead ? 'opacity-40 hover:opacity-70' : ''} ${isFocused ? 'ring-1 ring-accent/40 bg-white/[0.05]' : ''}`}
+        className={`group flex gap-3 rounded-xl mx-2 px-2 py-3 hover:bg-white/[0.04] active:bg-white/[0.06] transition-all border-b border-white/[0.04] last:border-0 ${fresh ? 'border-l-2 border-l-indigo-500/40 pl-1.5' : ''} ${isRead ? 'opacity-40 hover:opacity-70' : ''} ${isFocused ? 'ring-1 ring-accent/40 bg-white/[0.05]' : ''}`}
       >
         {item.thumbnail && (
           <img
@@ -126,7 +134,7 @@ export default function ArticleItem({ item, density = 'small', onToggleStar, isS
       target="_blank"
       rel="noopener noreferrer"
       onClick={onRead}
-      className={`group flex gap-3 rounded-xl mx-2 px-2 py-2.5 hover:bg-white/[0.04] active:bg-white/[0.06] transition-all ${isRead ? 'opacity-40 hover:opacity-70' : ''} ${isFocused ? 'ring-1 ring-accent/40 bg-white/[0.05]' : ''}`}
+      className={`group flex gap-3 rounded-xl mx-2 px-2 py-2.5 hover:bg-white/[0.04] active:bg-white/[0.06] transition-all ${fresh ? 'border-l-2 border-indigo-500/40 pl-1.5' : ''} ${isRead ? 'opacity-40 hover:opacity-70' : ''} ${isFocused ? 'ring-1 ring-accent/40 bg-white/[0.05]' : ''}`}
     >
       {item.thumbnail && (
         <img
