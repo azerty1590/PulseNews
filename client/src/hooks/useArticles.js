@@ -52,7 +52,7 @@ export function useArticles(feedId, refreshKey = 0, autoIntervalMs = 0) {
     api.getArticles(feedId, refreshKey > 0)
       .then((data) => {
         if (cancelled) return;
-        if (!data || typeof data !== 'object') { setLoading(false); return; }
+        if (!data || typeof data !== 'object') { setError('Server unavailable'); setLoading(false); return; }
         setArticles(data);
         setLastFetched(Date.now());
         setLoading(false);

@@ -8,8 +8,18 @@ async function json(res) {
   return data;
 }
 
+// Retry GET requests up to 3 times with backoff — handles Render 503 cold-starts
+async function fetchWithRetry(url, opts, attempts = 3) {
+  for (let i = 0; i < attempts; i++) {
+    const res = await fetch(url, opts);
+    if (res.status !== 503 && res.status !== 502) return res;
+    if (i < attempts - 1) await new Promise((r) => setTimeout(r, 2000 * (i + 1)));
+    else return res; // return the last bad response so json() can throw properly
+  }
+}
+
 export const api = {
-  getFeeds: () => fetch(`${BASE}/feeds`).then(json),
+  getFeeds: () => fetchWithRetry(`${BASE}/feeds`).then(json),
 
   addFeed: (url, label) =>
     fetch(`${BASE}/feeds`, {
@@ -36,9 +46,9 @@ export const api = {
     }).then(json),
 
   getArticles: (id, bust = false) =>
-    fetch(`${BASE}/feeds/${id}/articles${bust ? '?bust=1' : ''}`).then(json),
+    fetchWithRetry(`${BASE}/feeds/${id}/articles${bust ? '?bust=1' : ''}`).then(json),
 
-  getCategories: () => fetch(`${BASE}/categories`).then(json),
+  getCategories: () => fetchWithRetry(`${BASE}/categories`).then(json),
   addCategory: (name) =>
     fetch(`${BASE}/categories`, {
       method: 'POST',
