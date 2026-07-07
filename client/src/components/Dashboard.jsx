@@ -7,6 +7,7 @@ import AddFeedModal from './AddFeedModal.jsx';
 import TableView from './TableView.jsx';
 import CategoryTabs from './CategoryTabs.jsx';
 import MobileFeed from './MobileFeed.jsx';
+import DiscoverPanel from './DiscoverPanel.jsx';
 import SettingsPanel from './SettingsPanel.jsx';
 import { useStarred } from '../hooks/useStarred.js';
 import StarredPanel from './StarredPanel.jsx';
@@ -110,8 +111,9 @@ export default function Dashboard() {
     reorderFeeds(feeds.map((f) => visibleFeeds.some((v) => v.id === f.id) ? feeds.find((x) => x.id === ids[vi++]) : f));
   }
 
+  const isDiscover = safeTabId === 'discover';
   const showTabs = !loading && (feeds.length > 0 || categories.length > 0);
-  const emptyCat  = !loading && feeds.length > 0 && visibleFeeds.length === 0 && safeTabId !== 'all';
+  const emptyCat  = !loading && feeds.length > 0 && visibleFeeds.length === 0 && safeTabId !== 'all' && !isDiscover;
 
   return (
     <div className="min-h-screen bg-surface flex flex-col">
@@ -268,8 +270,19 @@ export default function Dashboard() {
           </div>
         )}
 
+        {/* ── discover tab ── */}
+        {isDiscover && (
+          <DiscoverPanel
+            feeds={feeds}
+            onAdd={async (url, label) => {
+              const feed = await addFeed(url, label);
+              return feed;
+            }}
+          />
+        )}
+
         {/* ── empty: no feeds at all ── */}
-        {!loading && feeds.length === 0 && <EmptyState onAdd={() => setShowModal(true)} />}
+        {!isDiscover && !loading && feeds.length === 0 && <EmptyState onAdd={() => setShowModal(true)} />}
 
         {/* ── empty category ── */}
         {emptyCat && (
@@ -287,7 +300,7 @@ export default function Dashboard() {
         {/* ══════════════════════════════════════════════
             MOBILE  — article-first or by-source
         ══════════════════════════════════════════════ */}
-        {!loading && visibleFeeds.length > 0 && isMobile && (
+        {!isDiscover && !loading && visibleFeeds.length > 0 && isMobile && (
           <MobileFeed
             feeds={visibleFeeds}
             groupBySource={mobileView === 'sources'}
@@ -309,7 +322,7 @@ export default function Dashboard() {
         {/* ══════════════════════════════════════════════
             DESKTOP — timeline table
         ══════════════════════════════════════════════ */}
-        {!loading && visibleFeeds.length > 0 && !isMobile && desktopView === 'table' && (
+        {!isDiscover && !loading && visibleFeeds.length > 0 && !isMobile && desktopView === 'table' && (
           <div className="px-6 py-6">
             <TableView feeds={visibleFeeds} />
           </div>
@@ -318,7 +331,7 @@ export default function Dashboard() {
         {/* ══════════════════════════════════════════════
             DESKTOP — card grid with loading skeleton
         ══════════════════════════════════════════════ */}
-        {!isMobile && desktopView === 'grid' && (
+        {!isDiscover && !isMobile && desktopView === 'grid' && (
           <div className="px-6 py-6">
             {loading ? (
               <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0,1fr))` }}>
@@ -380,7 +393,7 @@ export default function Dashboard() {
         )}
 
         {/* mobile loading */}
-        {loading && isMobile && (
+        {!isDiscover && loading && isMobile && (
           <MobileFeed feeds={[]} groupBySource={false} />
         )}
       </main>

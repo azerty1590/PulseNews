@@ -33,7 +33,7 @@ export default function CategoryTabs({ categories, activeId, onSelect, onAdd, on
     setEditName(cat.name);
   }
 
-  const tabs = [{ id: 'all', name: 'All' }, ...categories];
+  const tabs = [{ id: 'all', name: 'All' }, ...categories, { id: 'discover', name: 'Discover', special: true }];
 
   return (
     <div className="flex items-center gap-0.5 overflow-x-auto scrollbar-none">
@@ -57,18 +57,27 @@ export default function CategoryTabs({ categories, activeId, onSelect, onAdd, on
             ) : (
               <button
                 onClick={() => onSelect(tab.id)}
-                onDoubleClick={(e) => tab.id !== 'all' && startEdit(tab, e)}
+                onDoubleClick={(e) => tab.id !== 'all' && !tab.special && startEdit(tab, e)}
                 className={`group relative flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
-                  isActive
-                    ? 'bg-white/[0.08] text-white'
-                    : 'text-white/40 hover:text-white/70 hover:bg-white/[0.04]'
+                  tab.special
+                    ? isActive
+                      ? 'bg-indigo-500/20 text-indigo-300'
+                      : 'text-indigo-400/60 hover:text-indigo-300 hover:bg-indigo-500/10'
+                    : isActive
+                      ? 'bg-white/[0.08] text-white'
+                      : 'text-white/40 hover:text-white/70 hover:bg-white/[0.04]'
                 }`}
               >
                 {isActive && (
-                  <span className="absolute bottom-0 left-3 right-3 h-px bg-accent rounded-full" />
+                  <span className={`absolute bottom-0 left-3 right-3 h-px rounded-full ${tab.special ? 'bg-indigo-400' : 'bg-accent'}`} />
+                )}
+                {tab.special && (
+                  <svg viewBox="0 0 16 16" fill="currentColor" className="h-3 w-3 shrink-0">
+                    <path d="M7.657 1.05a.4.4 0 0 1 .686 0l1.263 2.19 2.19 1.263a.4.4 0 0 1 0 .686l-2.19 1.263-1.263 2.19a.4.4 0 0 1-.686 0L6.394 6.452 4.204 5.189a.4.4 0 0 1 0-.686l2.19-1.263L7.657 1.05ZM2.5 9.5a.3.3 0 0 1 .514 0l.786 1.36 1.36.787a.3.3 0 0 1 0 .514l-1.36.786L3.014 14.3a.3.3 0 0 1-.514 0l-.786-1.353L.354 12.16a.3.3 0 0 1 0-.514l1.36-.787L2.5 9.5Z" />
+                  </svg>
                 )}
                 {tab.name}
-                {tab.id !== 'all' && (
+                {tab.id !== 'all' && !tab.special && (
                   <span
                     onClick={(e) => { e.stopPropagation(); if (activeId === tab.id) onSelect('all'); onDelete(tab.id); }}
                     className="hidden group-hover:flex items-center justify-center rounded-full w-3.5 h-3.5 text-white/30 hover:text-white/70 hover:bg-white/10 transition-colors"

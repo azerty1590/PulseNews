@@ -1,8 +1,10 @@
 const BASE = (import.meta.env.VITE_API_BASE ?? '') + '/api';
 
 async function json(res) {
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error ?? res.statusText);
+  const text = await res.text();
+  let data;
+  try { data = JSON.parse(text); } catch { data = null; }
+  if (!res.ok) throw new Error(data?.error ?? (text.slice(0, 120) || res.statusText));
   return data;
 }
 
@@ -57,4 +59,6 @@ export const api = {
 
   discoverFeeds: (url) =>
     fetch(`${BASE}/feeds/discover?url=${encodeURIComponent(url)}`).then(json),
+
+  getSuggestions: () => fetch(`${BASE}/suggestions`).then(json),
 };
