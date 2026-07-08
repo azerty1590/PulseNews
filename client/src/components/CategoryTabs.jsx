@@ -204,7 +204,7 @@ export default function CategoryTabs({ categories, activeId, onSelect, onAdd, on
         </button>
       )}
 
-      {/* separator before the special (Bookmarks / Discover) tabs */}
+      {/* separator before the special (Bookmarks) tabs */}
       <span className="shrink-0 mx-1 h-4 w-px bg-white/[0.08]" />
       {specialTabs.map(renderSpecialTab)}
     </div>
