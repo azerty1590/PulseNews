@@ -18,12 +18,12 @@
   }
 
   [data-theme='light'] {
-    --surface:   247 248 250; /* #f7f8fa */
+    --surface:   248 249 251; /* #f8f9fb */
     --surface-1: 255 255 255; /* #ffffff */
-    --surface-2: 241 243 246; /* #f1f3f6 */
-    --surface-3: 232 234 239; /* #e8eaef */
+    --surface-2: 240 242 246; /* #f0f2f6 */
+    --surface-3: 228 231 237; /* #e4e7ed */
     --fg:        17 24 39;     /* overlays are near-black on light */
-    --body-fg:   40 44 56;
+    --body-fg:   28 32 44;
     --overlay:   17 24 39;
   }
 
@@ -53,4 +53,56 @@
   /* extra subtle opacity steps not in Tailwind — theme-aware */
   .text-white\/18 { color: rgb(var(--fg) / 0.18); }
   .text-white\/22 { color: rgb(var(--fg) / 0.22); }
+}
+
+/* ── Light-mode contrast boost ──
+   The UI was designed dark-first: muted text uses low alpha (text-white/20…50)
+   which reads fine as light-grey on dark, but is far too faint as dark-grey on
+   white. Remap the common muted TEXT opacities to higher alpha in light mode so
+   secondary text stays legible. (Backgrounds/borders keep their subtlety.) */
+[data-theme='light'] {
+  .text-white\/15 { color: rgb(var(--fg) / 0.42); }
+  .text-white\/18 { color: rgb(var(--fg) / 0.44); }
+  .text-white\/20 { color: rgb(var(--fg) / 0.46); }
+  .text-white\/22 { color: rgb(var(--fg) / 0.48); }
+  .text-white\/25 { color: rgb(var(--fg) / 0.52); }
+  .text-white\/30 { color: rgb(var(--fg) / 0.56); }
+  .text-white\/35 { color: rgb(var(--fg) / 0.60); }
+  .text-white\/40 { color: rgb(var(--fg) / 0.66); }
+  .text-white\/45 { color: rgb(var(--fg) / 0.70); }
+  .text-white\/50 { color: rgb(var(--fg) / 0.74); }
+  .text-white\/55 { color: rgb(var(--fg) / 0.78); }
+  .text-white\/60 { color: rgb(var(--fg) / 0.82); }
+  .text-white\/65 { color: rgb(var(--fg) / 0.85); }
+  .text-white\/70 { color: rgb(var(--fg) / 0.88); }
+  .text-white\/75 { color: rgb(var(--fg) / 0.90); }
+  .text-white\/80 { color: rgb(var(--fg) / 0.92); }
+  .text-white\/85 { color: rgb(var(--fg) / 0.94); }
+  .text-white\/90 { color: rgb(var(--fg) / 0.96); }
+
+  /* Card/surface borders are nearly invisible on white — give them body. */
+  .border-white\/\[0\.04\],
+  .border-white\/\[0\.05\],
+  .border-white\/\[0\.06\],
+  .border-white\/\[0\.07\] { border-color: rgb(var(--fg) / 0.12); }
+  .border-white\/\[0\.08\],
+  .border-white\/\[0\.10\] { border-color: rgb(var(--fg) / 0.16); }
+
+  /* Divider lines */
+  .divide-white\/\[0\.04\] > :not([hidden]) ~ :not([hidden]),
+  .divide-white\/\[0\.05\] > :not([hidden]) ~ :not([hidden]) {
+    border-color: rgb(var(--fg) / 0.10);
+  }
+
+  /* Hover/fill surfaces need a touch more presence on white. */
+  .bg-white\/\[0\.02\],
+  .bg-white\/\[0\.025\],
+  .bg-white\/\[0\.03\],
+  .bg-white\/\[0\.04\] { background-color: rgb(var(--fg) / 0.04); }
+  .bg-white\/\[0\.05\],
+  .bg-white\/\[0\.06\],
+  .bg-white\/\[0\.07\] { background-color: rgb(var(--fg) / 0.06); }
+  .bg-white\/\[0\.08\],
+  .bg-white\/\[0\.12\],
+  .bg-white\/\[0\.14\] { background-color: rgb(var(--fg) / 0.10); }
 }
