@@ -12,6 +12,7 @@ import { useStarred } from '../hooks/useStarred.js';
 import StarredView from './StarredView.jsx';
 import ArticlePreviewPanel from './ArticlePreviewPanel.jsx';
 import { useTitleCount } from '../hooks/useTitleCount.js';
+import { useUnreadCounts } from '../hooks/useUnreadCounts.js';
 import { useServerStatus } from '../hooks/useServerStatus.js';
 
 /* ── icons ── */
@@ -125,20 +126,22 @@ export default function Dashboard() {
     }
   }, [loading, feeds, categories, cleanupStaleIds]);
 
-  const { total: totalNew, byFeed: newByFeed } = useTitleCount();
+  const { total: totalNew } = useTitleCount();
   const { status: serverStatus, ms: serverMs } = useServerStatus();
   useEffect(() => {
     document.title = totalNew > 0 ? `(${totalNew} new) Pulse` : 'Pulse — News Reader';
   }, [totalNew]);
 
-  // New-article count per tab: "all" = total; each category = sum of its feeds.
+  // Unread count per tab: "all" = total unread; each category = sum of its feeds.
+  const { byFeed: unreadByFeed } = useUnreadCounts(feeds);
   const tabCounts = useMemo(() => {
-    const counts = { all: totalNew };
+    const total = Object.values(unreadByFeed).reduce((s, n) => s + n, 0);
+    const counts = { all: total };
     for (const c of categories) {
-      counts[c.id] = (c.feedIds ?? []).reduce((s, fid) => s + (newByFeed[fid] ?? 0), 0);
+      counts[c.id] = (c.feedIds ?? []).reduce((s, fid) => s + (unreadByFeed[fid] ?? 0), 0);
     }
     return counts;
-  }, [totalNew, categories, newByFeed]);
+  }, [unreadByFeed, categories]);
 
   const safeTabId = activeTabId === 'all' || activeTabId === 'discover' || activeTabId === 'bookmarks' || categories.some((c) => c.id === activeTabId) ? activeTabId : 'all';
   const visibleFeeds = useMemo(
