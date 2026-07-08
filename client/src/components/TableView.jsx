@@ -1,30 +1,50 @@
+import { useState } from 'react';
 import { useAllArticles } from '../hooks/useAllArticles.js';
 import { relativeTime, fullDate } from '../lib/time.js';
 
-const BADGE_COLOURS = [
-  'bg-violet-500/15 text-violet-400',
-  'bg-blue-500/15 text-blue-400',
-  'bg-emerald-500/15 text-emerald-400',
-  'bg-amber-500/15 text-amber-400',
-  'bg-rose-500/15 text-rose-400',
-  'bg-cyan-500/15 text-cyan-400',
-  'bg-fuchsia-500/15 text-fuchsia-400',
-  'bg-lime-500/15 text-lime-400',
+const DOT_COLOURS = [
+  'text-violet-400', 'text-blue-400', 'text-emerald-400',
+  'text-amber-400',  'text-rose-400', 'text-cyan-400',
+  'text-fuchsia-400','text-lime-400',
 ];
-
 function colourFor(feedId) {
   let h = 0;
   for (let i = 0; i < feedId.length; i++) h = (h * 31 + feedId.charCodeAt(i)) >>> 0;
-  return BADGE_COLOURS[h % BADGE_COLOURS.length];
+  return DOT_COLOURS[h % DOT_COLOURS.length];
+}
+
+/* Source favicon derived from the article link, coloured-letter fallback */
+function SourceIcon({ item }) {
+  const [failed, setFailed] = useState(false);
+  let domain = '';
+  try { domain = new URL(item.link).hostname; } catch {}
+  const colour = colourFor(item.feedId);
+
+  if (failed || !domain) {
+    const letter = (item.feedLabel ?? '?')[0].toUpperCase();
+    return (
+      <span className={`h-5 w-5 shrink-0 rounded-md flex items-center justify-center text-[10px] font-bold ${colour} ${colour.replace('text-', 'bg-').replace('400', '500/15')}`}>
+        {letter}
+      </span>
+    );
+  }
+  return (
+    <img
+      src={`https://www.google.com/s2/favicons?domain=${domain}&sz=32`}
+      alt="" className="h-5 w-5 shrink-0 rounded-md object-contain bg-white/[0.04]"
+      onError={() => setFailed(true)}
+    />
+  );
 }
 
 function SkeletonRow() {
   return (
-    <tr>
-      <td className="px-4 py-3"><div className="h-5 w-20 rounded-full bg-white/[0.05] animate-shimmer" /></td>
-      <td className="px-4 py-3"><div className="h-3 rounded-full bg-white/[0.05] animate-shimmer" style={{ width: `${50 + Math.random() * 40}%` }} /></td>
-      <td className="px-4 py-3 text-right"><div className="ml-auto h-3 w-12 rounded-full bg-white/[0.05] animate-shimmer" /></td>
-    </tr>
+    <div className="flex items-center gap-3 px-4 py-3">
+      <div className="h-5 w-5 shrink-0 rounded-md bg-white/[0.05] animate-shimmer" />
+      <div className="h-3 w-24 shrink-0 rounded-full bg-white/[0.05] animate-shimmer" />
+      <div className="h-3 flex-1 rounded-full bg-white/[0.04] animate-shimmer" style={{ maxWidth: '60%' }} />
+      <div className="ml-auto h-3 w-12 rounded-full bg-white/[0.04] animate-shimmer" />
+    </div>
   );
 }
 
@@ -42,65 +62,53 @@ export default function TableView({ feeds }) {
         </div>
       )}
 
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-white/[0.06]">
-              <th className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-widest text-white/25 w-36">Source</th>
-              <th className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-widest text-white/25">Article</th>
-              <th className="px-4 py-3 text-right text-[10px] font-semibold uppercase tracking-widest text-white/25 w-28">Published</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-white/[0.04]">
-            {loading && Array.from({ length: 15 }).map((_, i) => <SkeletonRow key={i} />)}
+      <div className="divide-y divide-white/[0.04]">
+        {loading && Array.from({ length: 15 }).map((_, i) => <SkeletonRow key={i} />)}
 
-            {!loading && items.length === 0 && (
-              <tr>
-                <td colSpan={3} className="py-20 text-center text-sm text-white/25">
-                  No articles yet — add some feeds
-                </td>
-              </tr>
-            )}
+        {!loading && items.length === 0 && (
+          <p className="py-20 text-center text-sm text-white/25">No articles yet — add some feeds</p>
+        )}
 
-            {!loading && items.map((item) => {
-              const rel = relativeTime(item.pubDate);
-              const full = fullDate(item.pubDate);
-              const colour = colourFor(item.feedId);
+        {!loading && items.map((item) => {
+          const rel = relativeTime(item.pubDate);
+          const full = fullDate(item.pubDate);
+          const colour = colourFor(item.feedId);
+          const age = rel ?? 'recent';
 
-              return (
-                <tr key={`${item.feedId}-${item.id}`} className="group transition-colors hover:bg-white/[0.03]">
-                  <td className="px-4 py-3 align-top">
-                    <span className={`inline-flex max-w-[8rem] items-center truncate rounded-full px-2 py-0.5 text-[11px] font-medium ${colour}`}
-                      title={item.feedLabel}>
-                      {item.feedLabel}
-                    </span>
-                  </td>
+          return (
+            <a
+              key={`${item.feedId}-${item.id}`}
+              href={item.link}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group flex items-center gap-3 px-4 py-2.5 hover:bg-white/[0.03] transition-colors"
+            >
+              {/* Source: favicon + label (fixed width for timeline alignment) */}
+              <div className="flex items-center gap-2 w-44 shrink-0 min-w-0">
+                <SourceIcon item={item} />
+                <span className={`text-[11px] font-semibold truncate ${colour}`} title={item.feedLabel}>
+                  {item.feedLabel}
+                </span>
+              </div>
 
-                  <td className="px-4 py-3">
-                    <a
-                      href={item.link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="block font-medium text-white/70 group-hover:text-white transition-colors line-clamp-1 text-[13px]"
-                    >
-                      {item.title}
-                    </a>
-                    {item.summary && (
-                      <p className="mt-0.5 line-clamp-1 text-xs text-white/25">{item.summary}</p>
-                    )}
-                  </td>
+              {/* Title + summary */}
+              <div className="min-w-0 flex-1">
+                <p className="font-medium text-white/70 group-hover:text-white transition-colors truncate text-[13px]">
+                  {item.title}
+                </p>
+                {item.summary && (
+                  <p className="mt-0.5 truncate text-[11.5px] text-white/25">{item.summary}</p>
+                )}
+              </div>
 
-                  <td className="px-4 py-3 text-right align-top">
-                    {rel
-                      ? <span className="text-xs text-white/25 whitespace-nowrap" title={full}>{rel}</span>
-                      : <span className="text-white/15">—</span>
-                    }
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+              {/* Age */}
+              <span className="shrink-0 text-[11px] text-white/25 whitespace-nowrap tabular-nums w-24 text-right"
+                title={full || 'No date provided by source'}>
+                {age}
+              </span>
+            </a>
+          );
+        })}
       </div>
 
       {!loading && items.length > 0 && (

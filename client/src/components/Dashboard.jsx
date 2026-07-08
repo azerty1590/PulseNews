@@ -9,7 +9,7 @@ import MobileFeed from './MobileFeed.jsx';
 import DiscoverPanel from './DiscoverPanel.jsx';
 import SettingsPanel from './SettingsPanel.jsx';
 import { useStarred } from '../hooks/useStarred.js';
-import StarredPanel from './StarredPanel.jsx';
+import StarredView from './StarredView.jsx';
 import ArticlePreviewPanel from './ArticlePreviewPanel.jsx';
 import { useTitleCount } from '../hooks/useTitleCount.js';
 import { useServerStatus } from '../hooks/useServerStatus.js';
@@ -95,7 +95,6 @@ export default function Dashboard() {
   const dropRef  = useRef(null);   // mirrors dropIndex — always current in event handlers
   const [showModal,        setShowModal]        = useState(false);
   const [showSettings,     setShowSettings]     = useState(false);
-  const [showStarred,      setShowStarred]      = useState(false);
   const [previewArticle,   setPreviewArticle]   = useState(null);
   const [searchQuery,      setSearchQuery]      = useState('');
   const [showMobileSearch, setShowMobileSearch] = useState(false);
@@ -132,7 +131,7 @@ export default function Dashboard() {
     document.title = totalNew > 0 ? `(${totalNew} new) Pulse` : 'Pulse — News Reader';
   }, [totalNew]);
 
-  const safeTabId = activeTabId === 'all' || activeTabId === 'discover' || categories.some((c) => c.id === activeTabId) ? activeTabId : 'all';
+  const safeTabId = activeTabId === 'all' || activeTabId === 'discover' || activeTabId === 'bookmarks' || categories.some((c) => c.id === activeTabId) ? activeTabId : 'all';
   const visibleFeeds = useMemo(
     () => safeTabId === 'all'
       ? feeds
@@ -151,19 +150,19 @@ export default function Dashboard() {
       return;
     }
 
-    // Category view: rebuild full feeds array preserving non-visible positions
-    const reorderedIds = reordered.map((f) => f.id);
+    // Category view: the visible feeds occupy scattered slots in the full array.
+    // Refill those slots (in full-array order) with the reordered visible feeds
+    // so the category filter yields the new order; non-visible feeds stay put.
     const visibleIdSet = new Set(visibleFeeds.map((f) => f.id));
-    let ri = 0;
-    reorderFeeds(feeds.map((f) => {
-      if (!visibleIdSet.has(f.id)) return f;
-      return feeds.find((x) => x.id === reorderedIds[ri++]) ?? f;
-    }));
+    const queue = [...reordered];   // consume in order for each visible slot
+    reorderFeeds(feeds.map((f) => (visibleIdSet.has(f.id) ? queue.shift() : f)));
   }
 
-  const isDiscover = safeTabId === 'discover';
+  const isDiscover  = safeTabId === 'discover';
+  const isBookmarks = safeTabId === 'bookmarks';
+  const isSpecial   = isDiscover || isBookmarks;
   const showTabs = !loading && (feeds.length > 0 || categories.length > 0);
-  const emptyCat  = !loading && feeds.length > 0 && visibleFeeds.length === 0 && safeTabId !== 'all' && !isDiscover;
+  const emptyCat  = !loading && feeds.length > 0 && visibleFeeds.length === 0 && safeTabId !== 'all' && !isSpecial;
 
   return (
     <div className="min-h-screen bg-surface flex flex-col">
@@ -176,8 +175,8 @@ export default function Dashboard() {
           {/* ── toolbar row ── */}
           <div className="flex h-14 items-center gap-3 px-4 sm:px-6">
 
-            {/* Logo */}
-            <div className="flex items-center gap-2.5 select-none">
+            {/* Logo — left */}
+            <div className="flex items-center gap-2.5 select-none shrink-0 sm:flex-1">
               <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent/15 ring-1 ring-accent/20">
                 <svg viewBox="0 0 16 16" fill="none" className="h-4 w-4">
                   <rect x="1" y="1" width="6" height="6" rx="1.5" fill="#818cf8" opacity=".9"/>
@@ -189,8 +188,8 @@ export default function Dashboard() {
               <span className="text-sm font-semibold text-white/90">Pulse</span>
             </div>
 
-            {/* Search — desktop */}
-            <div className="hidden sm:flex flex-1 max-w-xs mx-4 items-center gap-2 rounded-lg bg-white/[0.05] px-3 py-1.5 ring-1 ring-transparent focus-within:ring-accent/30 focus-within:bg-white/[0.07] transition-all">
+            {/* Search — desktop, centered */}
+            <div className="hidden sm:flex w-full max-w-md items-center gap-2 rounded-lg bg-white/[0.05] px-3 py-1.5 ring-1 ring-transparent focus-within:ring-accent/30 focus-within:bg-white/[0.07] transition-all">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5 text-white/25 shrink-0">
                 <path fillRule="evenodd" d="M9 3.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11ZM2 9a7 7 0 1 1 12.452 4.391l3.328 3.329a.75.75 0 1 1-1.06 1.06l-3.329-3.328A7 7 0 0 1 2 9Z" clipRule="evenodd" />
               </svg>
@@ -221,14 +220,6 @@ export default function Dashboard() {
                   </svg>
                 </button>
               )}
-              {/* Bookmarks */}
-              <button onClick={() => setShowStarred(true)}
-                className="relative flex items-center justify-center rounded-lg p-2 text-white/30 hover:text-white/70 hover:bg-white/[0.06] transition-colors">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
-                  <path d="M6.3 2.841A1.5 1.5 0 0 0 4 4.11V15a1.5 1.5 0 0 0 2.374 1.218l3.126-2.5 3.126 2.5A1.5 1.5 0 0 0 15 15V4.11a1.5 1.5 0 0 0-2.3-1.269l-3.126 2.5-3.274-2.5Z" />
-                </svg>
-                {starred.length > 0 && <span className="absolute top-1 right-1 h-1.5 w-1.5 rounded-full bg-amber-400" />}
-              </button>
               {/* Settings */}
               <button onClick={() => setShowSettings(true)}
                 className="flex items-center justify-center rounded-lg p-2 text-white/30 hover:text-white/70 hover:bg-white/[0.06] transition-colors">
@@ -243,16 +234,9 @@ export default function Dashboard() {
               </button>
             </div>
 
-            {/* ── desktop-only controls ── */}
-            <div className="hidden sm:flex items-center gap-1">
+            {/* ── desktop-only controls — right ── */}
+            <div className="hidden sm:flex items-center gap-1 flex-1 justify-end">
               <ServerStatus status={serverStatus} ms={serverMs} />
-              <button onClick={() => setShowStarred(true)}
-                className="relative flex items-center justify-center rounded-lg p-2 text-white/30 hover:text-white/70 hover:bg-white/[0.06] transition-colors" title="Bookmarks">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
-                  <path d="M6.3 2.841A1.5 1.5 0 0 0 4 4.11V15a1.5 1.5 0 0 0 2.374 1.218l3.126-2.5 3.126 2.5A1.5 1.5 0 0 0 15 15V4.11a1.5 1.5 0 0 0-2.3-1.269l-3.126 2.5-3.274-2.5Z" />
-                </svg>
-                {starred.length > 0 && <span className="absolute top-1 right-1 h-1.5 w-1.5 rounded-full bg-amber-400" />}
-              </button>
               <button onClick={() => setShowSettings(true)}
                 className="flex items-center justify-center rounded-lg p-2 text-white/30 hover:text-white/70 hover:bg-white/[0.06] transition-colors" title="Settings">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
@@ -302,6 +286,7 @@ export default function Dashboard() {
                 setCatDropId={setCatDropId}
                 isDragging={dragState !== null}
                 onAssignFeed={(feedId, catId) => catId === 'all' ? unassignFeed(feedId) : assignFeed(feedId, catId)}
+                starredCount={starred.length}
               />
               {/* Mobile view toggle lives here — next to tabs, not in the crowded toolbar */}
               {isMobile && (
@@ -342,8 +327,13 @@ export default function Dashboard() {
           />
         )}
 
+        {/* ── bookmarks tab ── */}
+        {isBookmarks && (
+          <StarredView starred={starred} onToggleStar={toggleStar} onAdd={() => setShowModal(true)} />
+        )}
+
         {/* ── empty: no feeds at all ── */}
-        {!isDiscover && !loading && feeds.length === 0 && <EmptyState onAdd={() => setShowModal(true)} />}
+        {!isSpecial && !loading && feeds.length === 0 && <EmptyState onAdd={() => setShowModal(true)} />}
 
         {/* ── empty category ── */}
         {emptyCat && (
@@ -361,7 +351,7 @@ export default function Dashboard() {
         {/* ══════════════════════════════════════════════
             MOBILE  — article-first or by-source
         ══════════════════════════════════════════════ */}
-        {!isDiscover && !loading && visibleFeeds.length > 0 && isMobile && (
+        {!isSpecial && !loading && visibleFeeds.length > 0 && isMobile && (
           <MobileFeed
             feeds={visibleFeeds}
             groupBySource={mobileView === 'sources'}
@@ -383,7 +373,7 @@ export default function Dashboard() {
         {/* ══════════════════════════════════════════════
             DESKTOP — timeline table
         ══════════════════════════════════════════════ */}
-        {!isDiscover && !loading && visibleFeeds.length > 0 && !isMobile && desktopView === 'table' && (
+        {!isSpecial && !loading && visibleFeeds.length > 0 && !isMobile && desktopView === 'table' && (
           <div className="px-6 py-6">
             <TableView feeds={visibleFeeds} />
           </div>
@@ -392,7 +382,7 @@ export default function Dashboard() {
         {/* ══════════════════════════════════════════════
             DESKTOP — card grid with loading skeleton
         ══════════════════════════════════════════════ */}
-        {!isDiscover && !isMobile && desktopView === 'grid' && (
+        {!isSpecial && !isMobile && desktopView === 'grid' && (
           <div className="px-6 py-6">
             {loading ? (
               <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0,1fr))` }}>
@@ -421,14 +411,6 @@ export default function Dashboard() {
                 className="grid gap-4 items-start"
                 style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
                 onDragOver={(e) => e.preventDefault()}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  const from = dragRef.current;
-                  const to   = dropRef.current;
-                  if (from !== null && to !== null) commitReorder(from, to);
-                  dragRef.current = null; dropRef.current = null;
-                  setDragState(null); setDropIndex(null);
-                }}
               >
                 {visibleFeeds.map((feed, index) => {
                   const cat = categoryOfFeed(feed.id);
@@ -453,6 +435,13 @@ export default function Dashboard() {
                       isDropTarget={isDropTarget}
                       onDragStart={() => { dragRef.current = index; dropRef.current = index; setDragState({ feedId: feed.id, fromIndex: index }); setDropIndex(index); }}
                       onDragEnter={() => { if (dragRef.current !== null) { dropRef.current = index; setDropIndex(index); } }}
+                      onDrop={() => {
+                        const from = dragRef.current;
+                        const to   = index;   // dropped ON this card → its index is the target
+                        dragRef.current = null; dropRef.current = null;
+                        setDragState(null); setDropIndex(null);
+                        if (from !== null && from !== to) commitReorder(from, to);
+                      }}
                       onDragEnd={() => { dragRef.current = null; dropRef.current = null; setDragState(null); setDropIndex(null); }}
                     />
                   );
@@ -463,7 +452,7 @@ export default function Dashboard() {
         )}
 
         {/* mobile loading */}
-        {!isDiscover && loading && isMobile && (
+        {!isSpecial && loading && isMobile && (
           <MobileFeed feeds={[]} groupBySource={false} />
         )}
       </main>
@@ -491,13 +480,6 @@ export default function Dashboard() {
         onDeleteAllFeeds={() => { feeds.forEach((f) => deleteFeed(f.id)); }}
         categories={categories}
         onDeleteAllCategories={() => { categories.forEach((c) => deleteCategory(c.id)); }}
-      />
-
-      <StarredPanel
-        open={showStarred}
-        onClose={() => setShowStarred(false)}
-        starred={starred}
-        onToggleStar={toggleStar}
       />
 
       <ArticlePreviewPanel

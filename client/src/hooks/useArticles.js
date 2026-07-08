@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { api } from '../lib/api.js';
+import { articleCache } from '../lib/articleCache.js';
 
 export function useArticles(feedId, refreshKey = 0, autoIntervalMs = 0) {
   const [articles, setArticles]     = useState(null);
@@ -15,51 +15,65 @@ export function useArticles(feedId, refreshKey = 0, autoIntervalMs = 0) {
   const countdownRef = useRef(null);
   const nextInRef    = useRef(0);
 
-  // Core fetch — bust=true forces cache bypass
+  // Apply a fresh data payload: update state + detect new items vs. known ids.
+  const applyData = useCallback((data) => {
+    setArticles(data);
+    setLastFetched(Date.now());
+    setError(null);
+    const incoming = new Set((data?.items ?? []).map((i) => i.id));
+    if (knownIdsRef.current.size > 0) {
+      let fresh = 0;
+      for (const id of incoming) if (!knownIdsRef.current.has(id)) fresh++;
+      if (fresh > 0) setNewCount((prev) => prev + fresh);
+    }
+    knownIdsRef.current = incoming;
+  }, []);
+
+  // Core fetch — bust=true forces cache bypass (manual/auto refresh)
   const doFetch = useCallback(async (bust = false) => {
     if (!feedId) return;
     try {
-      const data = await api.getArticles(feedId, bust);
-      setArticles(data);
-      setLastFetched(Date.now());
-      setError(null);
-
-      // Detect new items vs what we already knew about
-      const incoming = new Set((data.items ?? []).map((i) => i.id));
-      if (knownIdsRef.current.size > 0) {
-        let fresh = 0;
-        for (const id of incoming) {
-          if (!knownIdsRef.current.has(id)) fresh++;
-        }
-        if (fresh > 0) setNewCount((prev) => prev + fresh);
-      }
-      knownIdsRef.current = incoming;
+      const data = await articleCache.get(feedId, { bust });
+      applyData(data);
     } catch (e) {
       setError(e.message);
     }
-  }, [feedId]);
+  }, [feedId, applyData]);
 
-  // Initial / manual refresh (shows loading spinner)
+  // Initial / manual refresh. Paints instantly from cache, revalidates in bg.
   useEffect(() => {
     if (!feedId) return;
     let cancelled = false;
-    setLoading(true);
-    setError(null);
     setNewCount(0);
     knownIdsRef.current = new Set();
 
-    api.getArticles(feedId, refreshKey > 0)
+    // Instant paint from shared cache when available.
+    const cached = articleCache.peek(feedId);
+    if (cached && refreshKey === 0) {
+      setArticles(cached);
+      setLastFetched(Date.now());
+      setLoading(false);
+      knownIdsRef.current = new Set((cached.items ?? []).map((i) => i.id));
+    } else {
+      setLoading(true);
+    }
+    setError(null);
+
+    // Subscribe so background revalidations (from any view) update this card.
+    const unsub = articleCache.subscribe(feedId, (data) => {
+      if (!cancelled) applyData(data);
+    });
+
+    articleCache.get(feedId, { bust: refreshKey > 0 })
       .then((data) => {
         if (cancelled) return;
-        setArticles(data);
-        setLastFetched(Date.now());
+        applyData(data);
         setLoading(false);
-        knownIdsRef.current = new Set((data.items ?? []).map((i) => i.id));
       })
       .catch((e) => { if (!cancelled) { setError(e.message); setLoading(false); } });
 
-    return () => { cancelled = true; };
-  }, [feedId, refreshKey]);
+    return () => { cancelled = true; unsub(); };
+  }, [feedId, refreshKey, applyData]);
 
   // Auto-refresh interval + countdown ticker
   useEffect(() => {

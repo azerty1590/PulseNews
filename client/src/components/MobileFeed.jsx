@@ -13,6 +13,30 @@ function feedColour(id) {
   return BADGE_COLOURS[h % BADGE_COLOURS.length];
 }
 
+/* Source favicon derived from the article link, with a coloured-letter fallback */
+function SourceIcon({ item, size = 'h-5 w-5' }) {
+  const [failed, setFailed] = useState(false);
+  let domain = '';
+  try { domain = new URL(item.link).hostname; } catch {}
+  const colour = feedColour(item.feedId);
+
+  if (failed || !domain) {
+    const letter = (item.feedLabel ?? '?')[0].toUpperCase();
+    return (
+      <span className={`${size} shrink-0 rounded-md flex items-center justify-center text-[10px] font-bold ${colour} ${colour.replace('text-', 'bg-').replace('400', '500/15')}`}>
+        {letter}
+      </span>
+    );
+  }
+  return (
+    <img
+      src={`https://www.google.com/s2/favicons?domain=${domain}&sz=32`}
+      alt="" className={`${size} shrink-0 rounded-md object-contain bg-white/[0.04]`}
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
 function SkeletonCard() {
   return (
     <div className="animate-shimmer rounded-2xl bg-surface-1 border border-white/[0.05] overflow-hidden">
@@ -44,57 +68,16 @@ function StarBtn({ item, isStarred, onToggleStar }) {
   );
 }
 
-/* Hero card — first article, full width, big image */
-function HeroCard({ item, isStarred, onToggleStar, onPreview, readSet, onRead }) {
-  const rel = relativeTime(item.pubDate);
-  const full = fullDate(item.pubDate);
-  const colour = feedColour(item.feedId);
-  const isRead = readSet?.has(`${item.feedId}::${item.id}`);
-
-  function handleClick(e) {
-    e.preventDefault();
-    onRead?.(item);
-    onPreview ? onPreview(item) : window.open(item.link, '_blank', 'noopener,noreferrer');
-  }
-
-  return (
-    <div
-      onClick={handleClick}
-      className={`block rounded-2xl overflow-hidden border border-white/[0.07] bg-surface-1 active:scale-[0.99] transition-transform cursor-pointer ${isRead ? 'opacity-50' : ''}`}
-    >
-      {item.thumbnail && (
-        <div className="relative h-44 w-full overflow-hidden">
-          <img src={item.thumbnail} alt="" className="w-full h-full object-cover"
-            onError={(e) => { e.currentTarget.parentElement.style.display = 'none'; }} />
-          <div className="absolute inset-0 bg-gradient-to-t from-surface-1/90 via-transparent to-transparent" />
-        </div>
-      )}
-      <div className="px-4 py-3">
-        <div className="flex items-start gap-2">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-1.5 mb-2">
-              <span className={`text-[11px] font-semibold ${colour}`}>{item.feedLabel}</span>
-              {rel && <><span className="text-white/15 text-[10px]">·</span><span className="text-[11px] text-white/30" title={full}>{rel}</span></>}
-            </div>
-            <p className="text-[15px] font-semibold leading-snug text-white/90 line-clamp-3">{item.title}</p>
-            {item.summary && (
-              <p className="mt-1.5 text-[12.5px] leading-relaxed text-white/40 line-clamp-2">{item.summary}</p>
-            )}
-          </div>
-          <StarBtn item={item} isStarred={isStarred} onToggleStar={onToggleStar} />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* Standard card — image right, text left */
-function ArticleCard({ item, density = 'small', showSource = false, isStarred, onToggleStar, onPreview, readSet, onRead }) {
+/* Standard card — text left, thumbnail right, source + time as metadata */
+function ArticleCard({ item, density = 'small', showSource = true, isStarred, onToggleStar, onPreview, readSet, onRead }) {
   const rel = relativeTime(item.pubDate);
   const full = fullDate(item.pubDate);
   const colour = feedColour(item.feedId);
   const showThumb = density !== 'compact' && item.thumbnail;
   const isRead = readSet?.has(`${item.feedId}::${item.id}`);
+  const starred = isStarred?.(item);
+  // Show real age when known, otherwise a subtle "recent" (source gave no date)
+  const age = rel ?? 'recent';
 
   function handleClick(e) {
     e.preventDefault();
@@ -105,23 +88,33 @@ function ArticleCard({ item, density = 'small', showSource = false, isStarred, o
   return (
     <div
       onClick={handleClick}
-      className={`flex items-center gap-3 px-1 py-2.5 border-b border-white/[0.05] active:bg-white/[0.03] transition-colors last:border-0 cursor-pointer ${isRead ? 'opacity-45' : ''}`}
+      className={`flex gap-3 px-2 py-3 rounded-xl active:bg-white/[0.04] transition-colors cursor-pointer ${isRead ? 'opacity-45' : ''}`}
     >
       <div className="flex-1 min-w-0">
-        <div className="flex items-baseline gap-2 min-w-0">
-          <p className="flex-1 text-[13.5px] font-medium leading-snug text-white/80 truncate">{item.title}</p>
-          {rel && <span className="shrink-0 text-[10px] text-white/25" title={full}>{rel}</span>}
+        {/* Source (favicon + name) + time metadata line */}
+        <div className="flex items-center gap-1.5 mb-1">
+          <SourceIcon item={item} size="h-4 w-4" />
+          {showSource && (
+            <span className={`text-[11px] font-semibold truncate ${colour}`}>{item.feedLabel}</span>
+          )}
+          <span className="text-white/15 text-[10px]">·</span>
+          <span className="shrink-0 text-[10px] text-white/30" title={full || 'No date provided by source'}>{age}</span>
+          {starred && (
+            <svg viewBox="0 0 16 16" fill="currentColor" className="h-3 w-3 ml-auto shrink-0 text-amber-400">
+              <path d="M3 2.75C3 1.784 3.784 1 4.75 1h6.5c.966 0 1.75.784 1.75 1.75v11.5a.75.75 0 0 1-1.227.579L8 11.722l-3.773 3.107A.75.75 0 0 1 3 14.25V2.75Z" />
+            </svg>
+          )}
         </div>
+        <p className="text-[14px] font-medium leading-[1.35] text-white/85 line-clamp-2">{item.title}</p>
         {density === 'detailed' && item.summary && (
-          <p className="mt-1 text-[12px] text-white/40 line-clamp-1 leading-relaxed">{item.summary}</p>
+          <p className="mt-1 text-[12px] text-white/40 line-clamp-2 leading-relaxed">{item.summary}</p>
         )}
       </div>
       {showThumb && (
         <img src={item.thumbnail} alt=""
-          className="h-12 w-12 shrink-0 rounded-lg object-cover opacity-85"
+          className="h-14 w-14 shrink-0 rounded-xl object-cover opacity-90 mt-0.5"
           onError={(e) => { e.currentTarget.style.display = 'none'; }} />
       )}
-      <StarBtn item={item} isStarred={isStarred} onToggleStar={onToggleStar} />
     </div>
   );
 }
@@ -342,19 +335,19 @@ export default function MobileFeed({
       return Object.values(grouped).map((group, gi) => (
         <div key={group.id}>
           <SectionHeader label={group.label} colour={feedColour(group.id)} first={gi === 0} />
-          {group.items.slice(0, 5).map((item, i) =>
-            <ArticleCard key={item.id} item={item} density={density} {...sharedProps} />
-          )}
+          <div className="divide-y divide-white/[0.04]">
+            {group.items.slice(0, 5).map((item) =>
+              <ArticleCard key={item.id} item={item} density={density} showSource={false} {...sharedProps} />
+            )}
+          </div>
         </div>
       ));
     }
 
-    const [hero, ...rest] = filtered;
     return (
       <>
-        <div className="mb-2"><HeroCard item={hero} {...sharedProps} /></div>
-        <div>
-          {rest.map((item) => (
+        <div className="divide-y divide-white/[0.04]">
+          {filtered.map((item) => (
             <ArticleCard key={`${item.feedId}-${item.id}`} item={item} density={density} {...sharedProps} />
           ))}
         </div>
@@ -363,7 +356,7 @@ export default function MobileFeed({
   })();
 
   return (
-    <div className="px-4 pb-8">
+    <div className="px-3 pb-8">
       <Toolbar />
       {content}
       {showSources && (

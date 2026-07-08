@@ -1,6 +1,31 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { api } from '../lib/api.js';
 import { scoreSuggestions } from '../lib/discoverEngine.js';
+
+// Translate vertical mouse-wheel into horizontal scroll for a container.
+// Only hijacks the wheel when there's actually horizontal overflow, and lets
+// the page scroll normally once the strip is scrolled to its edge.
+function useWheelToHorizontal() {
+  const ref = useRef(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    function onWheel(e) {
+      if (e.deltaY === 0) return;
+      const maxScroll = el.scrollWidth - el.clientWidth;
+      if (maxScroll <= 0) return; // nothing to scroll horizontally
+      const atStart = el.scrollLeft <= 0;
+      const atEnd = el.scrollLeft >= maxScroll - 1;
+      // At an edge scrolling further outward → let the page scroll
+      if ((atStart && e.deltaY < 0) || (atEnd && e.deltaY > 0)) return;
+      e.preventDefault();
+      el.scrollLeft += e.deltaY;
+    }
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  }, []);
+  return ref;
+}
 
 const BASE = (import.meta.env.VITE_API_BASE ?? '') + '/api';
 
@@ -94,36 +119,81 @@ function PickCard({ pick, onDismiss, dismissed }) {
   const isDismissed = dismissed.has(pick.id);
   if (isDismissed) return null;
 
-  let domain = '';
-  try { domain = new URL(pick.url).hostname.replace(/^www\./, ''); } catch {}
-
   return (
-    <div className="group/pick flex gap-3 items-start rounded-xl border border-white/[0.06] bg-surface-1 px-4 py-3 hover:border-white/[0.10] hover:bg-white/[0.025] transition-colors">
-      <FaviconOrFallback url={pick.url} label={pick.source} />
-      <div className="min-w-0 flex-1">
-        <a href={pick.url} target="_blank" rel="noopener noreferrer"
-          className="text-[13px] font-medium text-white/75 hover:text-white/95 leading-snug line-clamp-2 transition-colors block">
-          {pick.title}
+    <div className="group/pick relative flex flex-col gap-1.5 rounded-xl border border-white/[0.06] bg-surface-1 px-3 py-2.5 hover:border-white/[0.10] hover:bg-white/[0.025] transition-colors w-[280px] h-[88px] shrink-0">
+      <div className="flex items-center gap-2 min-w-0">
+        <FaviconOrFallback url={pick.url} label={pick.source} />
+        <a href={pick.sourceUrl} target="_blank" rel="noopener noreferrer"
+          className="text-[11px] text-white/35 hover:text-indigo-400/70 transition-colors truncate">
+          {pick.source}
         </a>
-        <div className="flex items-center gap-2 mt-1.5">
-          <a href={pick.sourceUrl} target="_blank" rel="noopener noreferrer"
-            className="text-[11px] text-white/30 hover:text-indigo-400/70 transition-colors shrink-0">
-            {pick.source}
-          </a>
-          {pick.score > 0 && (
-            <span className="text-[11px] text-white/20 tabular-nums">· {pick.score > 999 ? `${Math.round(pick.score / 1000)}k` : pick.score} pts</span>
-          )}
-          {(pick.tags ?? []).slice(0, 2).map((t) => (
-            <span key={t} className="text-[10px] rounded-full px-1.5 py-0.5 bg-white/[0.05] text-white/25 leading-none">{t}</span>
-          ))}
-        </div>
+        {pick.score > 0 && (
+          <span className="text-[10px] text-white/20 tabular-nums shrink-0 ml-auto">
+            {pick.score > 999 ? `${Math.round(pick.score / 1000)}k` : pick.score}
+          </span>
+        )}
       </div>
+      <a href={pick.url} target="_blank" rel="noopener noreferrer"
+        className="text-[12.5px] font-medium text-white/75 hover:text-white/95 leading-snug line-clamp-2 transition-colors">
+        {pick.title}
+      </a>
       <button onClick={() => onDismiss(pick.id)} title="Not interested"
-        className="opacity-0 group-hover/pick:opacity-100 transition-opacity shrink-0 mt-0.5 rounded p-0.5 text-white/20 hover:text-white/50">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="h-3.5 w-3.5">
+        className="absolute top-1.5 right-1.5 opacity-0 group-hover/pick:opacity-100 transition-opacity rounded p-0.5 bg-surface-1 text-white/25 hover:text-white/60">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="h-3 w-3">
           <path d="M5.28 4.22a.75.75 0 0 0-1.06 1.06L6.94 8l-2.72 2.72a.75.75 0 1 0 1.06 1.06L8 9.06l2.72 2.72a.75.75 0 1 0 1.06-1.06L9.06 8l2.72-2.72a.75.75 0 0 0-1.06-1.06L8 6.94 5.28 4.22Z" />
         </svg>
       </button>
+    </div>
+  );
+}
+
+// ── Compact Website Chip (row 1 of Today's picks) ─────────────────────────────
+
+function WebsiteChip({ s, onAdd, onDismiss, isAdding, isAdded, isFollowed }) {
+  const feedUrl = s.feedUrl ?? s.url ?? '';
+  const siteUrl = s.url ?? feedUrl;
+  const following = isAdded || isFollowed;
+
+  return (
+    <div className={`group/chip relative flex flex-col gap-1.5 rounded-xl border bg-surface-1 px-3 py-2.5 transition-colors w-[280px] h-[124px] shrink-0 ${following ? 'border-indigo-500/20' : 'border-white/[0.06] hover:border-white/[0.10]'}`}>
+      <div className="flex items-center gap-2 min-w-0">
+        <FaviconOrFallback url={feedUrl} label={s.label} />
+        <a href={siteUrl} target="_blank" rel="noopener noreferrer"
+          className="text-[12.5px] font-semibold text-white/80 hover:text-white truncate transition-colors">
+          {s.label}
+        </a>
+        {s.isNew && (
+          <span className="text-[9px] font-medium rounded-full px-1.5 py-0.5 bg-emerald-500/15 text-emerald-400 leading-none shrink-0">New</span>
+        )}
+      </div>
+      <p className="text-[11px] text-white/35 leading-snug line-clamp-2 flex-1">
+        {s.description || 'No description available'}
+      </p>
+      <div className="flex items-center justify-between gap-2 mt-auto">
+        <div className="flex gap-1 min-w-0 overflow-hidden">
+          {(s.tags ?? []).slice(0, 2).map((tag) => (
+            <span key={tag} className="text-[9px] rounded-full px-1.5 py-0.5 bg-white/[0.05] text-white/30 leading-none truncate">{tag}</span>
+          ))}
+        </div>
+        {following ? (
+          <span className="text-[10px] text-indigo-400/70 shrink-0">Following</span>
+        ) : isAdding ? (
+          <span className="shrink-0"><Spinner className="h-3 w-3 text-white/40" /></span>
+        ) : (
+          <button onClick={() => onAdd(s)}
+            className="shrink-0 text-[11px] rounded-lg px-2.5 py-1 bg-white/[0.06] hover:bg-indigo-500/20 hover:text-indigo-400 text-white/45 transition-colors">
+            ＋ Add
+          </button>
+        )}
+      </div>
+      {!following && (
+        <button onClick={() => onDismiss(s)} title="Not interested"
+          className="absolute top-1.5 right-1.5 opacity-0 group-hover/chip:opacity-100 transition-opacity rounded p-0.5 bg-surface-1 text-white/25 hover:text-white/60">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="h-3 w-3">
+            <path d="M5.28 4.22a.75.75 0 0 0-1.06 1.06L6.94 8l-2.72 2.72a.75.75 0 1 0 1.06 1.06L8 9.06l2.72 2.72a.75.75 0 1 0 1.06-1.06L9.06 8l2.72-2.72a.75.75 0 0 0-1.06-1.06L8 6.94 5.28 4.22Z" />
+          </svg>
+        </button>
+      )}
     </div>
   );
 }
@@ -239,6 +309,8 @@ export default function DiscoverPanel({ feeds, categories = [], onAdd, onRemove 
   });
 
   const [toastMsg, setToastMsg] = useState(null);
+  const picksScrollRef = useWheelToHorizontal();
+  const sitesScrollRef = useWheelToHorizontal();
 
   const followedUrls = new Set(feeds.map((f) => f.url ?? f.feedUrl ?? '').filter(Boolean));
   const categoryNames = categories.map((c) => c.name);
@@ -303,10 +375,26 @@ export default function DiscoverPanel({ feeds, categories = [], onAdd, onRemove 
     .slice(0, 12)
     .map(([t]) => t)];
 
+  // Row 1 of Today's picks: the top-scored new-to-you websites — best matches
+  // the user isn't already following. These are lifted out of the "Sources to
+  // follow" grid below so the two never show the same site (suggestions is
+  // pre-sorted by score desc by scoreSuggestions()).
+  const PICK_SITE_COUNT = 12;
+  const topSites = suggestions
+    .filter((s) => {
+      const url = s.feedUrl ?? s.url ?? '';
+      return url && !dismissed.has(url) && !followedUrls.has(url);
+    })
+    .slice(0, PICK_SITE_COUNT);
+  const topSiteUrls = new Set(topSites.map((s) => s.feedUrl ?? s.url ?? ''));
+
   const filteredSuggestions = (activeTag === 'all'
     ? suggestions
     : suggestions.filter((s) => (s.tags ?? []).includes(activeTag))
-  ).filter((s) => !dismissed.has(s.feedUrl ?? s.url ?? '')).slice(0, 50);
+  ).filter((s) => {
+    const url = s.feedUrl ?? s.url ?? '';
+    return !dismissed.has(url) && !topSiteUrls.has(url); // exclude Today's-picks new sites
+  }).slice(0, 50);
 
   // ── Dismiss source
   function handleDismissSource(s) {
@@ -400,9 +488,75 @@ export default function DiscoverPanel({ feeds, categories = [], onAdd, onRemove 
           }
         />
 
+        {/* ── Row 1: New websites ── */}
+        <div className="mb-2 flex items-center gap-2">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-white/35">New websites</span>
+          <div className="flex-1 h-px bg-white/[0.05]" />
+        </div>
+
+        {sugLoading && (
+          <div className="flex gap-2 overflow-x-auto scrollbar-none pb-2 mb-6">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="w-[280px] h-[124px] rounded-xl border border-white/[0.07] bg-surface-1 px-3 py-2.5 flex flex-col gap-2 animate-pulse shrink-0">
+                <div className="flex items-center gap-2">
+                  <div className="h-6 w-6 rounded-md bg-white/[0.06] shrink-0" />
+                  <div className="h-2.5 w-24 rounded bg-white/[0.06]" />
+                </div>
+                <div className="space-y-1.5">
+                  <div className="h-2.5 w-full rounded bg-white/[0.04]" />
+                  <div className="h-2.5 w-2/3 rounded bg-white/[0.04]" />
+                </div>
+                <div className="mt-auto h-4 w-16 rounded bg-white/[0.05]" />
+              </div>
+            ))}
+          </div>
+        )}
+
+        {!sugLoading && topSites.length === 0 && (
+          <p className="text-white/20 text-xs py-4 mb-4">No new websites right now — you're following the top matches.</p>
+        )}
+
+        {!sugLoading && topSites.length > 0 && (
+          <div ref={sitesScrollRef}
+            className="flex gap-2 overflow-x-auto scrollbar-none pb-2 mb-6 -mx-1 px-1 snap-x overscroll-x-contain">
+            {topSites.map((s) => {
+              const feedUrl = s.feedUrl ?? s.url ?? '';
+              return (
+                <div key={feedUrl} className="snap-start">
+                  <WebsiteChip
+                    s={s}
+                    onAdd={handleAdd}
+                    onDismiss={handleDismissSource}
+                    isAdding={adding.has(feedUrl)}
+                    isAdded={added.has(feedUrl)}
+                    isFollowed={followedUrls.has(feedUrl)}
+                  />
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* ── Row 2: Selected articles ── */}
+        <div className="mb-2 flex items-center gap-2">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-white/35">Selected articles</span>
+          <div className="flex-1 h-px bg-white/[0.05]" />
+        </div>
+
         {picksLoading && (
-          <div className="flex flex-col gap-2">
-            {Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} wide />)}
+          <div className="flex gap-2 overflow-x-auto scrollbar-none pb-2">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="w-[280px] h-[88px] rounded-xl border border-white/[0.07] bg-surface-1 px-3 py-2.5 flex flex-col gap-2 animate-pulse shrink-0">
+                <div className="flex items-center gap-2">
+                  <div className="h-6 w-6 rounded-md bg-white/[0.06] shrink-0" />
+                  <div className="h-2.5 w-20 rounded bg-white/[0.06]" />
+                </div>
+                <div className="space-y-1.5">
+                  <div className="h-2.5 w-full rounded bg-white/[0.04]" />
+                  <div className="h-2.5 w-3/4 rounded bg-white/[0.04]" />
+                </div>
+              </div>
+            ))}
           </div>
         )}
 
@@ -411,16 +565,16 @@ export default function DiscoverPanel({ feeds, categories = [], onAdd, onRemove 
         )}
 
         {!picksLoading && !picksError && visiblePicks.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-12 text-center">
-            <p className="text-white/25 text-sm">No picks yet</p>
-            <p className="text-white/15 text-xs mt-1">Try refreshing — the server fetches fresh content daily</p>
-          </div>
+          <p className="text-white/20 text-xs py-4">No articles yet — try refreshing.</p>
         )}
 
         {!picksLoading && !picksError && visiblePicks.length > 0 && (
-          <div className="flex flex-col gap-1.5">
+          <div ref={picksScrollRef}
+            className="flex gap-2 overflow-x-auto scrollbar-none pb-2 -mx-1 px-1 snap-x overscroll-x-contain">
             {visiblePicks.slice(0, 40).map((pick) => (
-              <PickCard key={pick.id} pick={pick} onDismiss={handleDismissPick} dismissed={dismissedPicks} />
+              <div key={pick.id} className="snap-start">
+                <PickCard pick={pick} onDismiss={handleDismissPick} dismissed={dismissedPicks} />
+              </div>
             ))}
           </div>
         )}

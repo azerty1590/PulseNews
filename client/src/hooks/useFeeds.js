@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { api } from '../lib/api.js';
+import { articleCache } from '../lib/articleCache.js';
 
 const STORAGE_KEY = 'newsboard:feeds';
 
@@ -62,6 +63,7 @@ export function useFeeds() {
 
   const deleteFeed = useCallback(async (id) => {
     await api.deleteFeed(id);
+    articleCache.invalidate(id);
     setFeeds((prev) => {
       const next = prev.filter((f) => f.id !== id);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
@@ -76,7 +78,7 @@ export function useFeeds() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(reordered));
     try {
       await api.reorderFeeds(reordered.map((f, i) => ({ id: f.id, order: i + 1 })));
-    } catch {
+    } catch (e) {
       feedsRef.current = prev;
       setFeeds(prev);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(prev));

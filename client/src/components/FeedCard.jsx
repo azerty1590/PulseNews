@@ -82,7 +82,10 @@ const TRASH_PATH  = 'M5 3.25V4H2.75a.75.75 0 0 0 0 1.5h.3l.815 8.15A1.5 1.5 0 0 
 const GRIP_DOTS   = 'M5 4a1 1 0 1 1-2 0 1 1 0 0 1 2 0Zm6 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0ZM5 8a1 1 0 1 1-2 0 1 1 0 0 1 2 0Zm6 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0ZM5 12a1 1 0 1 1-2 0 1 1 0 0 1 2 0Zm6 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z';
 
 /* ── card ── */
-export default function FeedCard({ feed, index, onDelete, onRename, categories, currentCategoryId, onAssign, onUnassign, density = 'small', searchQuery = '', onToggleStar, isStarred, autoRefresh = 0, unreadOnly = false, onPreview, isDragging = false, isDropTarget = false, onDragStart, onDragEnter, onDragEnd }) {
+export default function FeedCard({ feed, index, onDelete, onRename, categories, currentCategoryId, onAssign, onUnassign, density = 'small', searchQuery = '', onToggleStar, isStarred, autoRefresh = 0, unreadOnly = false, onPreview, isDragging = false, isDropTarget = false, onDragStart, onDragEnter, onDragEnd, onDrop }) {
+  // Only allow dragging when grabbed by the handle (prevents accidental drags
+  // while scrolling article lists or clicking links inside the card).
+  const [dragEnabled, setDragEnabled] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
   const [editingLabel, setEditingLabel] = useState(false);
@@ -174,11 +177,12 @@ export default function FeedCard({ feed, index, onDelete, onRename, categories, 
   return (
         <div
           ref={cardRef}
-          draggable
+          draggable={dragEnabled}
           onDragStart={(e) => { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('feedId', feed.id); onDragStart?.(); }}
           onDragEnter={(e) => { e.preventDefault(); onDragEnter?.(); }}
-          onDragOver={(e) => e.preventDefault()}
-          onDragEnd={() => onDragEnd?.()}
+          onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }}
+          onDrop={(e) => { e.preventDefault(); onDrop?.(); setDragEnabled(false); }}
+          onDragEnd={() => { onDragEnd?.(); setDragEnabled(false); }}
           onMouseEnter={() => { isHoveredRef.current = true; }}
           onMouseLeave={() => { isHoveredRef.current = false; setFocusedIdx(-1); }}
           className={`group/card flex flex-col rounded-2xl border transition-all duration-200 ${
@@ -192,8 +196,10 @@ export default function FeedCard({ feed, index, onDelete, onRename, categories, 
           {/* ── Card header ── */}
           <div className="flex items-center gap-2 px-3 py-2">
 
-            {/* Drag handle — hidden until hover */}
+            {/* Drag handle — hidden until hover. Grabbing here enables card dragging. */}
             <span
+              onMouseDown={() => setDragEnabled(true)}
+              onMouseUp={() => setDragEnabled(false)}
               className="cursor-grab active:cursor-grabbing shrink-0 opacity-0 group-hover/card:opacity-100 transition-opacity text-white/25 hover:text-white/60 -ml-1"
               title="Drag to reorder"
             >
@@ -224,97 +230,101 @@ export default function FeedCard({ feed, index, onDelete, onRename, categories, 
               </span>
             )}
 
-            {/* Scraped badge */}
-            {articles?.type === 'scraped' && (
-              <span className="shrink-0 rounded-md bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-400/60" title="No RSS feed found — showing scraped links">
-                scraped
-              </span>
-            )}
+            {/* ── Right slot: badges by default, actions on hover ── */}
+            <div className="relative shrink-0 flex items-center justify-end">
 
-            {/* "N new" badge — auto-refresh detected new items */}
-            {newCount > 0 && (
-              <button
-                onClick={clearNew}
-                className="shrink-0 rounded-full bg-emerald-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-400 tabular-nums animate-pulse hover:animate-none hover:bg-emerald-500/30 transition-colors"
-                title="New articles since last check — click to dismiss"
-              >
-                +{newCount} new
-              </button>
-            )}
-
-            {/* Unread count badge */}
-            {!loading && !error && (() => {
-              const all = articles?.items ?? [];
-              const unread = all.filter((i) => !isRead?.(`${feed.id}:${i.id}`));
-              if (unread.length === 0 && all.length > 0) {
-                return <span className="shrink-0 rounded-full bg-white/[0.06] px-1.5 py-0.5 text-[10px] text-white/25">all read</span>;
-              }
-              if (unread.length > 0) {
-                return (
-                  <span className="shrink-0 rounded-full bg-accent/20 px-1.5 py-0.5 text-[10px] font-semibold text-accent/80 tabular-nums">
-                    {unread.length}
+              {/* Badges — visible by default, fade out on hover */}
+              <div className="flex items-center gap-1.5 opacity-100 sm:group-hover/card:opacity-0 sm:group-hover/card:pointer-events-none transition-opacity">
+                {/* Scraped badge */}
+                {articles?.type === 'scraped' && (
+                  <span className="rounded-md bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-400/60" title="No RSS feed found — showing scraped links">
+                    scraped
                   </span>
-                );
-              }
-              return null;
-            })()}
+                )}
 
-            {/* Error indicator */}
-            {error && !loading && (
-              <span className="shrink-0 h-2 w-2 rounded-full bg-red-500/80" title={`Error: ${error}`} />
-            )}
+                {/* "N new" badge */}
+                {newCount > 0 && (
+                  <span className="rounded-full bg-emerald-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-400 tabular-nums" title="New articles since last check">
+                    +{newCount} new
+                  </span>
+                )}
 
-            {/* Last fetched */}
-            {lastFetched && !loading && !error && (
-              <span
-                className="shrink-0 text-[10px] text-white/15 opacity-0 group-hover/card:opacity-100 transition-opacity"
-                title={new Date(lastFetched).toLocaleTimeString()}
-              >
-                {Math.round((Date.now() - lastFetched) / 1000) < 10 ? 'just now' : `${Math.round((Date.now() - lastFetched) / 60000)}m ago`}
-              </span>
-            )}
+                {/* Unread count badge */}
+                {!loading && !error && (() => {
+                  const all = articles?.items ?? [];
+                  const unread = all.filter((i) => !isRead?.(`${feed.id}:${i.id}`));
+                  if (unread.length === 0 && all.length > 0) {
+                    return <span className="rounded-full bg-white/[0.06] px-1.5 py-0.5 text-[10px] text-white/25">all read</span>;
+                  }
+                  if (unread.length > 0) {
+                    return (
+                      <span className="rounded-full bg-accent/20 px-1.5 py-0.5 text-[10px] font-semibold text-accent/80 tabular-nums">
+                        {unread.length}
+                      </span>
+                    );
+                  }
+                  return null;
+                })()}
 
-            {/* Actions — always visible on touch, hover-revealed on desktop */}
-            <div className="flex items-center gap-0.5 opacity-100 sm:opacity-0 sm:group-hover/card:opacity-100 transition-opacity">
-              {/* Mark all read */}
-              {markAllRead && (articles?.items?.length ?? 0) > 0 && (
+                {/* Error indicator */}
+                {error && !loading && (
+                  <span className="h-2 w-2 rounded-full bg-red-500/80" title={`Error: ${error}`} />
+                )}
+              </div>
+
+              {/* Actions — hidden by default, revealed on hover (overlays badges) */}
+              <div className="absolute inset-y-0 right-0 flex items-center gap-0.5 opacity-0 pointer-events-none sm:group-hover/card:opacity-100 sm:group-hover/card:pointer-events-auto transition-opacity bg-surface-1">
+                {newCount > 0 && (
+                  <button
+                    onClick={clearNew}
+                    className="rounded-lg p-1.5 text-emerald-400/70 hover:text-emerald-400 hover:bg-emerald-500/10 transition-colors"
+                    title="Dismiss new-article count"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="h-3.5 w-3.5">
+                      <path d="M8 1.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM6.28 5.22a.75.75 0 0 0-1.06 1.06L6.94 8 5.22 9.72a.75.75 0 1 0 1.06 1.06L8 9.06l1.72 1.72a.75.75 0 1 0 1.06-1.06L9.06 8l1.72-1.72a.75.75 0 0 0-1.06-1.06L8 6.94 6.28 5.22Z" />
+                    </svg>
+                  </button>
+                )}
+                {/* Mark all read */}
+                {markAllRead && (articles?.items?.length ?? 0) > 0 && (
+                  <button
+                    onClick={() => {
+                      const keys = (articles?.items ?? []).map((i) => `${feed.id}:${i.id}`);
+                      markAllRead(keys);
+                    }}
+                    className="rounded-lg p-1.5 text-white/25 hover:text-white/70 hover:bg-white/[0.06] transition-colors"
+                    title="Mark all read"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="h-3.5 w-3.5">
+                      <path fillRule="evenodd" d="M12.416 3.376a.75.75 0 0 1 .208 1.04l-5 7.5a.75.75 0 0 1-1.154.114l-3-3a.75.75 0 0 1 1.06-1.06l2.353 2.353 4.493-6.74a.75.75 0 0 1 1.04-.207Z" clipRule="evenodd" />
+                    </svg>
+                  </button>
+                )}
+                <AssignMenu
+                  categories={categories ?? []}
+                  currentCategoryId={currentCategoryId}
+                  onAssign={onAssign}
+                  onUnassign={onUnassign}
+                />
                 <button
-                  onClick={() => {
-                    const keys = (articles?.items ?? []).map((i) => `${feed.id}:${i.id}`);
-                    markAllRead(keys);
-                  }}
-                  className="rounded-lg p-1.5 text-white/25 hover:text-white/70 hover:bg-white/[0.06] transition-colors"
-                  title="Mark all read"
+                  onClick={handleRefresh}
+                  disabled={refreshing}
+                  className="rounded-lg p-1.5 text-white/25 hover:text-white/70 hover:bg-white/[0.06] transition-colors disabled:opacity-50"
+                  title="Refresh (hover card + press r)"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="h-3.5 w-3.5">
-                    <path fillRule="evenodd" d="M12.416 3.376a.75.75 0 0 1 .208 1.04l-5 7.5a.75.75 0 0 1-1.154.114l-3-3a.75.75 0 0 1 1.06-1.06l2.353 2.353 4.493-6.74a.75.75 0 0 1 1.04-.207Z" clipRule="evenodd" />
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor"
+                    className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`}>
+                    <path fillRule="evenodd" d={REFRESH_PATH} clipRule="evenodd" />
                   </svg>
                 </button>
-              )}
-              <AssignMenu
-                categories={categories ?? []}
-                currentCategoryId={currentCategoryId}
-                onAssign={onAssign}
-                onUnassign={onUnassign}
-              />
-              <button
-                onClick={handleRefresh}
-                disabled={refreshing}
-                className="rounded-lg p-1.5 text-white/25 hover:text-white/70 hover:bg-white/[0.06] transition-colors disabled:opacity-50"
-                title="Refresh (hover card + press r)"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor"
-                  className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`}>
-                  <path fillRule="evenodd" d={REFRESH_PATH} clipRule="evenodd" />
-                </svg>
-              </button>
-              <button
-                onClick={() => { if (window.confirm(`Remove "${feed.label}"?`)) onDelete(feed.id); }}
-                className="rounded-lg p-1.5 text-white/25 hover:text-red-400 hover:bg-red-500/10 transition-colors"
-                title="Remove"
-              >
-                <Ico path={TRASH_PATH} />
-              </button>
+                <button
+                  onClick={() => { if (window.confirm(`Remove "${feed.label}"?`)) onDelete(feed.id); }}
+                  className="rounded-lg p-1.5 text-white/25 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                  title="Remove"
+                >
+                  <Ico path={TRASH_PATH} />
+                </button>
+              </div>
             </div>
           </div>
 
