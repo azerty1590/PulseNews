@@ -3,14 +3,41 @@
 @tailwind utilities;
 
 @layer base {
+  /* ── Theme tokens ──
+     --surface* : background layers (space-separated RGB for Tailwind alpha)
+     --fg       : foreground token — drives all `white/[opacity]` overlays
+     --overlay  : raw rgb() for scrollbar/scrim CSS that can't use `white/…` */
+  :root, [data-theme='dark'] {
+    --surface:   15 17 23;    /* #0f1117 */
+    --surface-1: 22 24 31;    /* #16181f */
+    --surface-2: 30 32 41;    /* #1e2029 */
+    --surface-3: 37 39 47;    /* #25272f */
+    --fg:        255 255 255; /* overlays are white on dark */
+    --body-fg:   200 202 212; /* #c8cad4 */
+    --overlay:   255 255 255;
+  }
+
+  [data-theme='light'] {
+    --surface:   247 248 250; /* #f7f8fa */
+    --surface-1: 255 255 255; /* #ffffff */
+    --surface-2: 241 243 246; /* #f1f3f6 */
+    --surface-3: 232 234 239; /* #e8eaef */
+    --fg:        17 24 39;     /* overlays are near-black on light */
+    --body-fg:   40 44 56;
+    --overlay:   17 24 39;
+  }
+
   html { scroll-behavior: smooth; -webkit-font-smoothing: antialiased; }
-  body { background-color: #0f1117; color: #c8cad4; }
+  body {
+    background-color: rgb(var(--surface));
+    color: rgb(var(--body-fg));
+  }
 
   /* thin custom scrollbar */
   ::-webkit-scrollbar          { width: 3px; height: 3px; }
   ::-webkit-scrollbar-track    { background: transparent; }
-  ::-webkit-scrollbar-thumb    { background: rgba(255,255,255,0.08); border-radius: 99px; }
-  ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.14); }
+  ::-webkit-scrollbar-thumb    { background: rgb(var(--overlay) / 0.08); border-radius: 99px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgb(var(--overlay) / 0.14); }
 
   /* selection */
   ::selection { background: rgba(99,102,241,0.35); color: #fff; }
@@ -23,7 +50,7 @@
   .scrollbar-none { scrollbar-width: none; }
   .scrollbar-none::-webkit-scrollbar { display: none; }
 
-  /* extra subtle opacity steps not in Tailwind */
-  .text-white\/18 { color: rgba(255,255,255,0.18); }
-  .text-white\/22 { color: rgba(255,255,255,0.22); }
+  /* extra subtle opacity steps not in Tailwind — theme-aware */
+  .text-white\/18 { color: rgb(var(--fg) / 0.18); }
+  .text-white\/22 { color: rgb(var(--fg) / 0.22); }
 }
