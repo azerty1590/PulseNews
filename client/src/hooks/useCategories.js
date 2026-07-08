@@ -3,9 +3,28 @@ import { api } from '../lib/api.js';
 import { feedIdRemap } from './useFeeds.js';
 
 const STORAGE_KEY = 'newsboard:categories';
+const ORDER_KEY = 'newsboard:categories:order';
 
 function loadLocal() {
   try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) ?? []; } catch { return []; }
+}
+
+function loadOrder() {
+  try { return JSON.parse(localStorage.getItem(ORDER_KEY)) ?? []; } catch { return []; }
+}
+
+// Reorder a server list to match the locally-saved id order. Ids present in the
+// saved order come first (in that order); any new/unknown ids keep their tail
+// position. Makes tab order survive reload even without server-side persistence.
+function applyLocalOrder(list) {
+  const order = loadOrder();
+  if (!order.length) return list;
+  const rank = new Map(order.map((id, i) => [id, i]));
+  return [...list].sort((a, b) => {
+    const ra = rank.has(a.id) ? rank.get(a.id) : Number.MAX_SAFE_INTEGER;
+    const rb = rank.has(b.id) ? rank.get(b.id) : Number.MAX_SAFE_INTEGER;
+    return ra - rb;
+  });
 }
 
 export function useCategories() {
@@ -19,12 +38,15 @@ export function useCategories() {
         if (data.length > 0) {
           // Apply feedId remap if feeds were just restored (IDs changed after cold start)
           const remap = feedIdRemap.current;
-          const remapped = remap
+          const remappedRaw = remap
             ? data.map((c) => ({
                 ...c,
                 feedIds: (c.feedIds ?? []).map((id) => remap.get(id) ?? id),
               }))
             : data;
+          // Honour the locally-saved tab order (survives reload even if the
+          // server doesn't persist `order`).
+          const remapped = applyLocalOrder(remappedRaw);
 
           // Push any remapped feedIds back to the server
           if (remap) {
@@ -146,7 +168,10 @@ export function useCategories() {
       const [moved] = next.splice(from, 1);
       next.splice(to, 0, moved);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-      // Persist order to server if it tracks an `order` field (no-op otherwise).
+      // Save the id order locally — the source of truth for tab order, so it
+      // survives reload regardless of server support.
+      localStorage.setItem(ORDER_KEY, JSON.stringify(next.map((c) => c.id)));
+      // Best-effort server persistence (ignored if the API doesn't accept order).
       Promise.all(next.map((c, i) => api.updateCategory(c.id, { order: i }).catch(() => {}))).catch(() => {});
       return next;
     });
