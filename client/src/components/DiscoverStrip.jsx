@@ -71,7 +71,7 @@ function DismissBtn({ onDismiss }) {
 function SiteChip({ s, onAdd, onDismiss, adding, added }) {
   const url = s.feedUrl ?? s.url ?? '';
   return (
-    <div className="group/chip relative flex flex-col gap-1.5 rounded-xl border border-white/[0.06] bg-surface-1 px-3 py-2.5 w-[240px] h-[92px] shrink-0 snap-start">
+    <div className="group/chip relative flex flex-col gap-1.5 rounded-xl border border-white/[0.06] bg-surface-1 px-3 py-2.5 w-[240px] h-[92px] shrink-0 snap-start hover:border-indigo-500/40 hover:bg-indigo-500/[0.04] hover:ring-1 hover:ring-indigo-500/20 transition-all duration-150">
       <DismissBtn onDismiss={onDismiss} />
       <div className="flex items-center gap-2 min-w-0 pr-4">
         <Favicon url={url} label={s.label} />
@@ -96,7 +96,7 @@ function SiteChip({ s, onAdd, onDismiss, adding, added }) {
 function PickChip({ pick, onDismiss }) {
   return (
     <a href={pick.url} target="_blank" rel="noopener noreferrer"
-      className="group/chip relative flex flex-col gap-1.5 rounded-xl border border-white/[0.06] bg-surface-1 hover:border-white/[0.10] hover:bg-white/[0.025] transition-colors px-3 py-2.5 w-[240px] h-[92px] shrink-0 snap-start">
+      className="group/chip relative flex flex-col gap-1.5 rounded-xl border border-white/[0.06] bg-surface-1 hover:border-indigo-500/40 hover:bg-indigo-500/[0.04] hover:ring-1 hover:ring-indigo-500/20 transition-all duration-150 px-3 py-2.5 w-[240px] h-[92px] shrink-0 snap-start">
       <DismissBtn onDismiss={onDismiss} />
       <div className="flex items-center gap-2 min-w-0 pr-4">
         <Favicon url={pick.url} label={pick.source} />
