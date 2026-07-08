@@ -6,7 +6,6 @@ import AddFeedModal from './AddFeedModal.jsx';
 import TableView from './TableView.jsx';
 import CategoryTabs from './CategoryTabs.jsx';
 import MobileFeed from './MobileFeed.jsx';
-import DiscoverPanel from './DiscoverPanel.jsx';
 import DiscoverStrip from './DiscoverStrip.jsx';
 import SettingsPanel from './SettingsPanel.jsx';
 import { useStarred } from '../hooks/useStarred.js';
@@ -146,7 +145,7 @@ export default function Dashboard() {
     return counts;
   }, [unreadByFeed, categories]);
 
-  const safeTabId = activeTabId === 'all' || activeTabId === 'discover' || activeTabId === 'bookmarks' || categories.some((c) => c.id === activeTabId) ? activeTabId : 'all';
+  const safeTabId = activeTabId === 'all' || activeTabId === 'bookmarks' || categories.some((c) => c.id === activeTabId) ? activeTabId : 'all';
   const visibleFeeds = useMemo(
     () => safeTabId === 'all'
       ? feeds
@@ -173,9 +172,8 @@ export default function Dashboard() {
     reorderFeeds(feeds.map((f) => (visibleIdSet.has(f.id) ? queue.shift() : f)));
   }
 
-  const isDiscover  = safeTabId === 'discover';
   const isBookmarks = safeTabId === 'bookmarks';
-  const isSpecial   = isDiscover || isBookmarks;
+  const isSpecial   = isBookmarks;
   const showTabs = !loading && (feeds.length > 0 || categories.length > 0);
   const emptyCat  = !loading && feeds.length > 0 && visibleFeeds.length === 0 && safeTabId !== 'all' && !isSpecial;
 
@@ -191,16 +189,16 @@ export default function Dashboard() {
           <div className="flex h-14 items-center gap-3 px-4 sm:px-6">
 
             {/* Logo — left */}
-            <div className="flex items-center gap-2.5 select-none shrink-0 sm:flex-1">
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent/15 ring-1 ring-accent/20">
-                <svg viewBox="0 0 16 16" fill="none" className="h-4 w-4">
-                  <rect x="1" y="1" width="6" height="6" rx="1.5" fill="#818cf8" opacity=".9"/>
-                  <rect x="9" y="1" width="6" height="6" rx="1.5" fill="#818cf8" opacity=".55"/>
-                  <rect x="1" y="9" width="6" height="6" rx="1.5" fill="#818cf8" opacity=".55"/>
-                  <rect x="9" y="9" width="6" height="6" rx="1.5" fill="#818cf8" opacity=".25"/>
+            <div className="group/logo flex items-center gap-2.5 select-none shrink-0 sm:flex-1 cursor-pointer">
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent/15 ring-1 ring-accent/20 transition-all duration-300 group-hover/logo:bg-accent/25 group-hover/logo:ring-accent/50 group-hover/logo:shadow-[0_0_14px_-2px_rgba(129,140,248,0.6)]">
+                <svg viewBox="0 0 16 16" fill="none" className="logo-svg h-4 w-4">
+                  <rect className="logo-tile t1" style={{ '--tile-o': 0.9 }}  x="1" y="1" width="6" height="6" rx="1.5" fill="#818cf8" opacity=".9"/>
+                  <rect className="logo-tile t2" style={{ '--tile-o': 0.55 }} x="9" y="1" width="6" height="6" rx="1.5" fill="#818cf8" opacity=".55"/>
+                  <rect className="logo-tile t3" style={{ '--tile-o': 0.55 }} x="1" y="9" width="6" height="6" rx="1.5" fill="#818cf8" opacity=".55"/>
+                  <rect className="logo-tile t4" style={{ '--tile-o': 0.25 }} x="9" y="9" width="6" height="6" rx="1.5" fill="#818cf8" opacity=".25"/>
                 </svg>
               </div>
-              <span className="text-sm font-semibold text-white/90">Pulse</span>
+              <span className="text-sm font-semibold text-white/90 transition-colors group-hover/logo:text-accent">Pulse</span>
             </div>
 
             {/* Search — desktop, centered */}
@@ -344,18 +342,6 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* ── discover tab ── */}
-        {isDiscover && (
-          <DiscoverPanel
-            feeds={feeds}
-            categories={categories}
-            onAdd={async (url, label) => {
-              const feed = await addFeed(url, label);
-              return feed;
-            }}
-            onRemove={deleteFeed}
-          />
-        )}
 
         {/* ── bookmarks tab ── */}
         {isBookmarks && (

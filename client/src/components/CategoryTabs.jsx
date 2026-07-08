@@ -42,7 +42,6 @@ export default function CategoryTabs({ categories, activeId, onSelect, onAdd, on
   ];
   const specialTabs = [
     { id: 'bookmarks', name: 'Bookmarks', special: 'amber', droppable: false, count: starredCount },
-    { id: 'discover', name: 'Discover', special: 'indigo', droppable: false },
   ];
 
   const anyDragging = isDragging;

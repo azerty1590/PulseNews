@@ -27,10 +27,22 @@ export default {
       keyframes: {
         fadeIn: { from: { opacity: '0', transform: 'translateY(6px)' }, to: { opacity: '1', transform: 'translateY(0)' } },
         shimmer: { '0%,100%': { opacity: '1' }, '50%': { opacity: '0.4' } },
+        // Logo tile ripple: pop the tile to full opacity + a slight scale, then settle.
+        logoPulse: {
+          '0%, 100%': { opacity: 'var(--tile-o, 1)', transform: 'scale(1)' },
+          '35%':      { opacity: '1', transform: 'scale(1.18)' },
+        },
+        // Whole logo does a tiny playful spin/settle on hover.
+        logoSpin: {
+          '0%':   { transform: 'rotate(0deg)' },
+          '60%':  { transform: 'rotate(8deg)' },
+          '100%': { transform: 'rotate(0deg)' },
+        },
       },
       animation: {
         fadeIn: 'fadeIn 0.18s ease-out both',
         shimmer: 'shimmer 1.5s ease-in-out infinite',
+        logoSpin: 'logoSpin 0.6s ease-in-out',
       },
     },
   },

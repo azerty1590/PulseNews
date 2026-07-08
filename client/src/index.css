@@ -50,6 +50,22 @@
   .scrollbar-none { scrollbar-width: none; }
   .scrollbar-none::-webkit-scrollbar { display: none; }
 
+  /* ── Logo hover: staggered tile ripple + tiny spin ──
+     Each tile keeps its resting opacity (--tile-o) and, on hover of the logo
+     group, pops to full opacity + a slight scale in sequence — a "pulse" wave.
+     transform-box/origin keep the scale centered on each individual tile. */
+  .logo-tile {
+    transform-box: fill-box;
+    transform-origin: center;
+    transition: opacity 0.2s ease;
+  }
+  .group\/logo:hover .logo-svg { animation: logoSpin 0.6s ease-in-out; }
+  .group\/logo:hover .logo-tile { animation: logoPulse 0.7s ease-in-out; }
+  .group\/logo:hover .logo-tile.t1 { animation-delay: 0s;    }
+  .group\/logo:hover .logo-tile.t2 { animation-delay: 0.09s; }
+  .group\/logo:hover .logo-tile.t3 { animation-delay: 0.18s; }
+  .group\/logo:hover .logo-tile.t4 { animation-delay: 0.27s; }
+
   /* extra subtle opacity steps not in Tailwind — theme-aware */
   .text-white\/18 { color: rgb(var(--fg) / 0.18); }
   .text-white\/22 { color: rgb(var(--fg) / 0.22); }
