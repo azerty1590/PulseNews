@@ -103,7 +103,8 @@ export default function FeedCard({ feed, index, onDelete, onRename, categories, 
   const inView = useInView(cardRef);
   const { articles, loading, error, lastFetched, newCount, clearNew, nextIn } = useArticles(feed.id, refreshKey, autoRefresh, inView);
   const { markRead, markAllRead, markUnread, isRead } = useReadState();
-  const maxH = density === 'compact' ? 360 : density === 'detailed' ? 520 : 420;
+  // Fixed card height per density so the grid renders as uniform rows.
+  const cardH = density === 'compact' ? 360 : density === 'detailed' ? 520 : 420;
 
   // Broadcast new-article count so Dashboard can update the tab title.
   useEffect(() => {
@@ -189,6 +190,7 @@ export default function FeedCard({ feed, index, onDelete, onRename, categories, 
           onDragEnd={() => { onDragEnd?.(); setDragEnabled(false); }}
           onMouseEnter={() => { isHoveredRef.current = true; }}
           onMouseLeave={() => { isHoveredRef.current = false; setFocusedIdx(-1); }}
+          style={{ height: cardH }}
           className={`group/card flex flex-col rounded-2xl border transition-all duration-200 ${
             isDragging
               ? 'border-accent/30 bg-surface-1 opacity-30'
@@ -335,8 +337,8 @@ export default function FeedCard({ feed, index, onDelete, onRename, categories, 
           {/* ── Divider ── */}
           <div className="mx-3 h-px bg-white/[0.05]" />
 
-          {/* ── Articles ── */}
-          <div className="flex-1 overflow-y-auto scrollbar-none" style={{ maxHeight: maxH }}>
+          {/* ── Articles ── (flex-1 fills the fixed-height card → uniform rows) */}
+          <div className="flex-1 min-h-0 overflow-y-auto scrollbar-none">
             {loading && <Skeleton />}
             {error && (
               <p className="m-3 rounded-xl bg-red-500/10 px-3 py-2.5 text-xs text-red-400/90 leading-relaxed">{error}</p>

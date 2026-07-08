@@ -401,7 +401,8 @@ export default function Dashboard() {
             {loading ? (
               <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0,1fr))` }}>
                 {Array.from({ length: cols * 2 }).map((_, i) => (
-                  <div key={i} className="rounded-2xl border border-white/[0.05] bg-surface-1 overflow-hidden">
+                  <div key={i} className="rounded-2xl border border-white/[0.05] bg-surface-1 overflow-hidden"
+                    style={{ height: density === 'compact' ? 360 : density === 'detailed' ? 520 : 420 }}>
                     <div className="px-4 py-3.5 border-b border-white/[0.05] flex items-center gap-2.5">
                       <div className="h-5 w-5 rounded bg-white/[0.06] animate-shimmer shrink-0" />
                       <div className="h-3 w-28 rounded-full bg-white/[0.07] animate-shimmer" />
