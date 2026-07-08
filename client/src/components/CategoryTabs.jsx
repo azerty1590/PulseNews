@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
 
-export default function CategoryTabs({ categories, activeId, onSelect, onAdd, onRename, onDelete, catDropId, setCatDropId, isDragging, onAssignFeed, starredCount = 0 }) {
+export default function CategoryTabs({ categories, activeId, onSelect, onAdd, onRename, onDelete, catDropId, setCatDropId, isDragging, onAssignFeed, starredCount = 0, counts = {}, onReorder }) {
   const [adding, setAdding] = useState(false);
   const [newName, setNewName] = useState('');
   const [editingId, setEditingId] = useState(null);
   const [editName, setEditName] = useState('');
+  const [tabDragId, setTabDragId] = useState(null); // category tab being dragged to reorder
   const addInputRef = useRef(null);
   const editInputRef = useRef(null);
 
@@ -104,33 +105,59 @@ export default function CategoryTabs({ categories, activeId, onSelect, onAdd, on
           );
         }
 
-        const isDragTarget = catDropId === tab.id;
+        const isDragTarget = catDropId === tab.id;      // a card is hovering (assign)
+        const isTabReorderTarget = tabDragId && tabDragId !== tab.id && catDropId === tab.id;
+        const isReorderable = tab.id !== 'all';
+        const count = counts[tab.id] ?? 0;
         return (
           <div key={tab.id} className="relative shrink-0">
             <button
+              draggable={isReorderable}
               onClick={() => onSelect(tab.id)}
               onDoubleClick={(e) => tab.id !== 'all' && startEdit(tab, e)}
+              onDragStart={(e) => {
+                // Reorder drag: mark this as a tab-move (distinct from card drags)
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('tabId', tab.id);
+                setTabDragId(tab.id);
+              }}
+              onDragEnd={() => { setTabDragId(null); setCatDropId?.(null); }}
               onDragOver={(e) => { e.preventDefault(); setCatDropId?.(tab.id); }}
               onDragLeave={() => setCatDropId?.(null)}
               onDrop={(e) => {
                 e.preventDefault();
+                const draggedTabId = e.dataTransfer.getData('tabId');
                 const feedId = e.dataTransfer.getData('feedId');
-                if (feedId) onAssignFeed?.(feedId, tab.id);
+                if (draggedTabId && isReorderable) {
+                  onReorder?.(draggedTabId, tab.id);     // reorder tabs
+                } else if (feedId) {
+                  onAssignFeed?.(feedId, tab.id);        // assign card to category
+                }
+                setTabDragId(null);
                 setCatDropId?.(null);
               }}
-              className={`group relative flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
-                isDragTarget
-                  ? 'bg-indigo-500/25 text-indigo-300 ring-1 ring-indigo-500/50'
-                  : isActive
-                    ? 'bg-white/[0.08] text-white'
-                    : 'text-white/40 hover:text-white/70 hover:bg-white/[0.04]'
+              className={`group relative flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${isReorderable ? 'cursor-grab active:cursor-grabbing' : ''} ${
+                tabDragId === tab.id
+                  ? 'opacity-40'
+                  : isTabReorderTarget
+                    ? 'bg-accent/20 text-white ring-1 ring-accent/50'
+                    : isDragTarget
+                      ? 'bg-indigo-500/25 text-indigo-300 ring-1 ring-indigo-500/50'
+                      : isActive
+                        ? 'bg-white/[0.08] text-white'
+                        : 'text-white/40 hover:text-white/70 hover:bg-white/[0.04]'
               }`}
             >
-              {isActive && !isDragTarget && (
+              {isActive && !isDragTarget && !isTabReorderTarget && (
                 <span className="absolute bottom-0 left-3 right-3 h-px rounded-full bg-accent" />
               )}
               {tab.name}
-              {tab.id !== 'all' && !anyDragging && (
+              {count > 0 && (
+                <span className={`rounded-full px-1.5 py-0.5 text-[9px] tabular-nums leading-none ${isActive ? 'bg-accent/25 text-accent' : 'bg-white/[0.08] text-white/45'}`}>
+                  {count}
+                </span>
+              )}
+              {tab.id !== 'all' && !anyDragging && !tabDragId && (
                 <span
                   onClick={(e) => {
                     e.stopPropagation();

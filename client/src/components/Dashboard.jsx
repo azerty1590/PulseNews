@@ -85,7 +85,7 @@ function ServerStatus({ status, ms }) {
 /* ════════════════════════════════════════════════════════════════════════ */
 export default function Dashboard() {
   const { feeds, loading, error, addFeed, deleteFeed, reorderFeeds, renameFeed } = useFeeds();
-  const { categories, addCategory, renameCategory, deleteCategory, assignFeed, unassignFeed, categoryOfFeed, cleanupStaleIds } = useCategories();
+  const { categories, addCategory, renameCategory, deleteCategory, assignFeed, unassignFeed, categoryOfFeed, cleanupStaleIds, reorderCategories } = useCategories();
   const isMobile = useIsMobile();
 
   const [dragState,        setDragState]        = useState(null);  // { feedId, fromIndex }
@@ -125,11 +125,20 @@ export default function Dashboard() {
     }
   }, [loading, feeds, categories, cleanupStaleIds]);
 
-  const totalNew = useTitleCount();
+  const { total: totalNew, byFeed: newByFeed } = useTitleCount();
   const { status: serverStatus, ms: serverMs } = useServerStatus();
   useEffect(() => {
     document.title = totalNew > 0 ? `(${totalNew} new) Pulse` : 'Pulse — News Reader';
   }, [totalNew]);
+
+  // New-article count per tab: "all" = total; each category = sum of its feeds.
+  const tabCounts = useMemo(() => {
+    const counts = { all: totalNew };
+    for (const c of categories) {
+      counts[c.id] = (c.feedIds ?? []).reduce((s, fid) => s + (newByFeed[fid] ?? 0), 0);
+    }
+    return counts;
+  }, [totalNew, categories, newByFeed]);
 
   const safeTabId = activeTabId === 'all' || activeTabId === 'discover' || activeTabId === 'bookmarks' || categories.some((c) => c.id === activeTabId) ? activeTabId : 'all';
   const visibleFeeds = useMemo(
@@ -287,6 +296,8 @@ export default function Dashboard() {
                 isDragging={dragState !== null}
                 onAssignFeed={(feedId, catId) => catId === 'all' ? unassignFeed(feedId) : assignFeed(feedId, catId)}
                 starredCount={starred.length}
+                counts={tabCounts}
+                onReorder={reorderCategories}
               />
               {/* Mobile view toggle lives here — next to tabs, not in the crowded toolbar */}
               {isMobile && (

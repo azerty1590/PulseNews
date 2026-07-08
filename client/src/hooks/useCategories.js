@@ -135,6 +135,23 @@ export function useCategories() {
     });
   }, []);
 
+  // Reorder categories by moving one id to another id's position.
+  const reorderCategories = useCallback((fromId, toId) => {
+    if (fromId === toId) return;
+    setCategories((prev) => {
+      const from = prev.findIndex((c) => c.id === fromId);
+      const to = prev.findIndex((c) => c.id === toId);
+      if (from < 0 || to < 0) return prev;
+      const next = [...prev];
+      const [moved] = next.splice(from, 1);
+      next.splice(to, 0, moved);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      // Persist order to server if it tracks an `order` field (no-op otherwise).
+      Promise.all(next.map((c, i) => api.updateCategory(c.id, { order: i }).catch(() => {}))).catch(() => {});
+      return next;
+    });
+  }, []);
+
   const categoryOfFeed = useCallback((feedId) => {
     return categories.find((c) => c.feedIds.includes(feedId)) ?? null;
   }, [categories]);
@@ -158,5 +175,5 @@ export function useCategories() {
     });
   }, []);
 
-  return { categories, addCategory, renameCategory, deleteCategory, assignFeed, unassignFeed, categoryOfFeed, cleanupStaleIds };
+  return { categories, addCategory, renameCategory, deleteCategory, assignFeed, unassignFeed, categoryOfFeed, cleanupStaleIds, reorderCategories };
 }

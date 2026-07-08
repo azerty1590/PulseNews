@@ -7,7 +7,8 @@ export function dispatchNewCount(feedId, count) {
   window.dispatchEvent(new CustomEvent(EVENT, { detail: { feedId, count } }));
 }
 
-// Dashboard uses this to track total new articles across all cards.
+// Dashboard uses this to track new articles across all cards.
+// Returns { total, byFeed } — byFeed maps feedId -> new-article count.
 export function useTitleCount() {
   const [map, setMap] = useState({});
 
@@ -24,5 +25,5 @@ export function useTitleCount() {
   }, []);
 
   const total = Object.values(map).reduce((s, n) => s + n, 0);
-  return total;
+  return { total, byFeed: map };
 }
