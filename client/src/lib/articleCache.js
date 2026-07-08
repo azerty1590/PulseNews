@@ -17,10 +17,36 @@ import { api } from './api.js';
 const FRESH_MS = 10 * 60_000;   // serve-then-revalidate threshold
 const MAX_AGE_MS = 60 * 60_000; // hard cap — older than this, block on fetch
 const SS_PREFIX = 'pulse:articles:';
+const MAX_CONCURRENT = 4;       // cap simultaneous network fetches
 
 const mem = new Map();       // feedId -> { data, fetchedAt }
 const inFlight = new Map();  // feedId -> Promise<data>
 const listeners = new Map(); // feedId -> Set<fn(data)>
+
+// ── Concurrency-limited queue ──────────────────────────────────────────────
+// Prevents N cards from firing N parallel requests at a free-tier server on
+// load. Higher-priority tasks (visible cards) run first.
+let active = 0;
+const queue = []; // Array<{ run, priority }>
+
+function pump() {
+  while (active < MAX_CONCURRENT && queue.length) {
+    let bestIdx = 0;
+    for (let i = 1; i < queue.length; i++) {
+      if (queue[i].priority > queue[bestIdx].priority) bestIdx = i;
+    }
+    const { run } = queue.splice(bestIdx, 1)[0];
+    active++;
+    run().finally(() => { active--; pump(); });
+  }
+}
+
+function enqueue(task, priority = 0) {
+  return new Promise((resolve, reject) => {
+    queue.push({ priority, run: () => task().then(resolve, reject) });
+    pump();
+  });
+}
 
 function ssRead(feedId) {
   try {
@@ -50,10 +76,10 @@ function emit(feedId, data) {
   if (set) for (const fn of set) { try { fn(data); } catch { /* ignore */ } }
 }
 
-// Fetch from network, store, notify. Deduped per feed.
-function refresh(feedId, { bust = false } = {}) {
+// Fetch from network (via the concurrency queue), store, notify. Deduped per feed.
+function refresh(feedId, { bust = false, priority = 0 } = {}) {
   if (inFlight.has(feedId)) return inFlight.get(feedId);
-  const p = api.getArticles(feedId, bust)
+  const p = enqueue(() => api.getArticles(feedId, bust), priority)
     .then((data) => {
       const entry = { data, fetchedAt: Date.now() };
       mem.set(feedId, entry);
@@ -74,21 +100,22 @@ export const articleCache = {
 
   // Returns cached data fast when possible, triggering a background refresh if
   // stale. Only blocks on the network when there is no usable cache.
-  //   bust=true  -> force a network fetch (manual refresh)
-  async get(feedId, { bust = false } = {}) {
+  //   bust=true     -> force a network fetch (manual refresh)
+  //   priority=1    -> jump the queue (visible cards) so on-screen loads first
+  async get(feedId, { bust = false, priority = 0 } = {}) {
     const entry = getEntry(feedId);
     const age = entry ? Date.now() - entry.fetchedAt : Infinity;
 
-    if (bust) return refresh(feedId, { bust: true });
+    if (bust) return refresh(feedId, { bust: true, priority });
 
     // Usable cache — serve now
     if (entry && age < MAX_AGE_MS) {
-      if (age >= FRESH_MS) refresh(feedId).catch(() => {}); // revalidate in bg
+      if (age >= FRESH_MS) refresh(feedId, { priority }).catch(() => {}); // revalidate in bg
       return entry.data;
     }
 
     // No / too-old cache — must fetch
-    return refresh(feedId);
+    return refresh(feedId, { priority });
   },
 
   // Subscribe to background updates for a feed. Returns an unsubscribe fn.

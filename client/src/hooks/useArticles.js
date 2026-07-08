@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { articleCache } from '../lib/articleCache.js';
 
-export function useArticles(feedId, refreshKey = 0, autoIntervalMs = 0) {
+export function useArticles(feedId, refreshKey = 0, autoIntervalMs = 0, enabled = true) {
   const [articles, setArticles]     = useState(null);
   const [loading, setLoading]       = useState(true);
   const [error, setError]           = useState(null);
@@ -41,6 +41,8 @@ export function useArticles(feedId, refreshKey = 0, autoIntervalMs = 0) {
   }, [feedId, applyData]);
 
   // Initial / manual refresh. Paints instantly from cache, revalidates in bg.
+  // Network fetch is deferred until `enabled` (card near viewport) to prioritise
+  // on-screen cards and avoid a burst of requests on load.
   useEffect(() => {
     if (!feedId) return;
     let cancelled = false;
@@ -54,7 +56,7 @@ export function useArticles(feedId, refreshKey = 0, autoIntervalMs = 0) {
       setLastFetched(Date.now());
       setLoading(false);
       knownIdsRef.current = new Set((cached.items ?? []).map((i) => i.id));
-    } else {
+    } else if (enabled) {
       setLoading(true);
     }
     setError(null);
@@ -64,7 +66,12 @@ export function useArticles(feedId, refreshKey = 0, autoIntervalMs = 0) {
       if (!cancelled) applyData(data);
     });
 
-    articleCache.get(feedId, { bust: refreshKey > 0 })
+    // Off-screen with no cache: wait for the card to scroll into view.
+    if (!enabled && !cached) {
+      return () => { cancelled = true; unsub(); };
+    }
+
+    articleCache.get(feedId, { bust: refreshKey > 0, priority: enabled ? 1 : 0 })
       .then((data) => {
         if (cancelled) return;
         applyData(data);
@@ -73,7 +80,7 @@ export function useArticles(feedId, refreshKey = 0, autoIntervalMs = 0) {
       .catch((e) => { if (!cancelled) { setError(e.message); setLoading(false); } });
 
     return () => { cancelled = true; unsub(); };
-  }, [feedId, refreshKey, applyData]);
+  }, [feedId, refreshKey, enabled, applyData]);
 
   // Auto-refresh interval + countdown ticker
   useEffect(() => {

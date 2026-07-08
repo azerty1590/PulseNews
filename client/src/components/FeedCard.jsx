@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useArticles } from '../hooks/useArticles.js';
+import { useInView } from '../hooks/useInView.js';
 import { useReadState } from '../hooks/useReadState.js';
 import { dispatchNewCount } from '../hooks/useTitleCount.js';
 import ArticleItem from './ArticleItem.jsx';
@@ -97,7 +98,10 @@ export default function FeedCard({ feed, index, onDelete, onRename, categories, 
   const isHoveredRef = useRef(false);
   const handleRefreshRef = useRef(null);
   const labelInputRef = useRef(null);
-  const { articles, loading, error, lastFetched, newCount, clearNew, nextIn } = useArticles(feed.id, refreshKey, autoRefresh);
+  // Defer network fetch until the card is near the viewport (prioritises
+  // on-screen cards). Cached feeds still paint instantly regardless.
+  const inView = useInView(cardRef);
+  const { articles, loading, error, lastFetched, newCount, clearNew, nextIn } = useArticles(feed.id, refreshKey, autoRefresh, inView);
   const { markRead, markAllRead, markUnread, isRead } = useReadState();
   const maxH = density === 'compact' ? 360 : density === 'detailed' ? 520 : 420;
 
