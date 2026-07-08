@@ -363,6 +363,26 @@ export default function Dashboard() {
           </div>
         )}
 
+        {/* ── Discover-more strip — top of a category tab ── */}
+        {!isSpecial && !loading && safeTabId !== 'all' && (() => {
+          const cat = categories.find((c) => c.id === safeTabId);
+          if (!cat) return null;
+          return (
+            <div className="px-4 sm:px-6 pt-6">
+              <DiscoverStrip
+                category={cat}
+                feeds={feeds}
+                allCategories={categories}
+                onAdd={async (url, label, catId) => {
+                  const feed = await addFeed(url, label);
+                  if (feed?.id && catId) assignFeed(feed.id, catId);
+                  return feed;
+                }}
+              />
+            </div>
+          );
+        })()}
+
         {/* ══════════════════════════════════════════════
             MOBILE  — article-first or by-source
         ══════════════════════════════════════════════ */}
@@ -471,26 +491,6 @@ export default function Dashboard() {
         {!isSpecial && loading && isMobile && (
           <MobileFeed feeds={[]} groupBySource={false} />
         )}
-
-        {/* ── Discover-more strip inside a category tab ── */}
-        {!isSpecial && !loading && safeTabId !== 'all' && (() => {
-          const cat = categories.find((c) => c.id === safeTabId);
-          if (!cat) return null;
-          return (
-            <div className="px-4 sm:px-6 pb-8">
-              <DiscoverStrip
-                category={cat}
-                feeds={feeds}
-                allCategories={categories}
-                onAdd={async (url, label, catId) => {
-                  const feed = await addFeed(url, label);
-                  if (feed?.id && catId) assignFeed(feed.id, catId);
-                  return feed;
-                }}
-              />
-            </div>
-          );
-        })()}
       </main>
 
       {showModal && <AddFeedModal onAdd={async (url, label) => {

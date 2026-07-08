@@ -160,7 +160,7 @@ export default function DiscoverStrip({ category, feeds, allCategories, onAdd })
   if (!loading && matchedSites.length === 0 && matchedPicks.length === 0) return null;
 
   return (
-    <div className="mt-8 pt-6 border-t border-white/[0.06]">
+    <div className="mb-2 pb-6 border-b border-white/[0.06]">
       <div className="flex items-center gap-2 mb-4">
         <svg viewBox="0 0 16 16" fill="currentColor" className="h-3.5 w-3.5 text-indigo-400/70">
           <path d="M7.657 1.05a.4.4 0 0 1 .686 0l1.263 2.19 2.19 1.263a.4.4 0 0 1 0 .686l-2.19 1.263-1.263 2.19a.4.4 0 0 1-.686 0L6.394 6.452 4.204 5.189a.4.4 0 0 1 0-.686l2.19-1.263L7.657 1.05Z" />
