@@ -324,25 +324,43 @@ async function discoverAndFetchRss(html, pageUrl) {
 // ---------------------------------------------------------------------------
 // Public: fetchFeed — handles RSS URLs and plain web pages
 // ---------------------------------------------------------------------------
-export async function fetchFeed(url) {
+// fetchFeed(url, validators?)
+//   validators: { etag?, lastModified? } from a previous fetch. When provided,
+//   we send If-None-Match / If-Modified-Since so unchanged feeds return 304
+//   (no body) — saving upstream bandwidth.
+// Returns the parsed feed object, plus a non-enumerable-ish { etag, lastModified }
+// so the caller can persist validators. On 304 returns { notModified: true }.
+export async function fetchFeed(url, validators = {}) {
   assertSafeUrl(url);
-  const res = await fetchWithTimeout(url, { headers: HEADERS });
+
+  const headers = { ...HEADERS };
+  if (validators.etag) headers['If-None-Match'] = validators.etag;
+  if (validators.lastModified) headers['If-Modified-Since'] = validators.lastModified;
+
+  const res = await fetchWithTimeout(url, { headers });
+
+  // Upstream says nothing changed — caller should reuse its cached data.
+  if (res.status === 304) {
+    return { notModified: true, etag: validators.etag, lastModified: validators.lastModified };
+  }
   if (!res.ok) throw new Error(`HTTP ${res.status} fetching ${url}`);
 
+  const etag = res.headers.get('etag') ?? null;
+  const lastModified = res.headers.get('last-modified') ?? null;
   const contentType = res.headers.get('content-type') ?? '';
   const text = await res.text();
 
   // Direct RSS/Atom feed
   if (isXml(contentType, text)) {
     const feed = await parser.parseString(text);
-    return mapRssFeed(feed, url);
+    return { ...mapRssFeed(feed, url), etag, lastModified };
   }
 
   // HTML page — try RSS autodiscovery first, then scrape
   if (contentType.includes('text/html') || text.trimStart().startsWith('<')) {
     const rss = await discoverAndFetchRss(text, url);
-    if (rss) return rss;
-    return scrapeHtml(text, url);
+    if (rss) return { ...rss, etag, lastModified };
+    return { ...scrapeHtml(text, url), etag, lastModified };
   }
 
   throw new Error(`Unsupported content type "${contentType}" for ${url}`);

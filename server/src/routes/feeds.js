@@ -166,8 +166,11 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-// Cache: serve fresh for 15 min, stale-while-revalidate up to 60 min
-const articleCache = new Map(); // id → { data, fetchedAt }
+// Cache: serve fresh for 15 min, stale-while-revalidate up to 60 min.
+// Each entry also holds the upstream validators (etag / last-modified) so the
+// next revalidation can send a conditional request and skip re-downloading
+// unchanged feeds (304 → reuse cached data).
+const articleCache = new Map(); // id → { data, fetchedAt, etag, lastModified }
 const FRESH_MS = 15 * 60_000;
 const STALE_MS = 60 * 60_000;
 
@@ -177,9 +180,24 @@ const inFlight = new Map(); // id → Promise<data>
 
 async function fetchAndCache(id, url) {
   if (inFlight.has(id)) return inFlight.get(id);
-  const promise = fetchFeed(url)
-    .then((data) => { articleCache.set(id, { data, fetchedAt: Date.now() }); return data; })
+
+  const prev = articleCache.get(id);
+  const validators = prev ? { etag: prev.etag, lastModified: prev.lastModified } : {};
+
+  const promise = fetchFeed(url, validators)
+    .then((result) => {
+      // 304 Not Modified — upstream unchanged, just refresh the cache timestamp.
+      if (result?.notModified && prev) {
+        articleCache.set(id, { ...prev, fetchedAt: Date.now() });
+        return prev.data;
+      }
+      // New payload — strip validators out of the stored article data.
+      const { etag = null, lastModified = null, ...data } = result;
+      articleCache.set(id, { data, fetchedAt: Date.now(), etag, lastModified });
+      return data;
+    })
     .finally(() => inFlight.delete(id));
+
   inFlight.set(id, promise);
   return promise;
 }
