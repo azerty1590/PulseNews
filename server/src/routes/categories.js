@@ -19,15 +19,26 @@ const col = () => db.collection(process.env.FIRESTORE_CATS_COLLECTION ?? 'catego
 async function listCats() {
   if (useFirebase) {
     const snap = await col().get();
-    return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    const cats = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    // Sort by explicit order when present; undated fall back to createdAt.
+    cats.sort((a, b) => {
+      const ao = a.order ?? Number.MAX_SAFE_INTEGER;
+      const bo = b.order ?? Number.MAX_SAFE_INTEGER;
+      if (ao !== bo) return ao - bo;
+      return (a.createdAt ?? '') < (b.createdAt ?? '') ? -1 : 1;
+    });
+    return cats;
   }
   return catStore.list();
 }
 
 async function addCat(data) {
   if (useFirebase) {
-    const doc = await col().add({ ...data, createdAt: new Date().toISOString() });
-    return { id: doc.id, ...data };
+    // Assign next order = current count, so new categories append to the end.
+    const snap = await col().get();
+    const order = snap.size;
+    const doc = await col().add({ ...data, order, createdAt: new Date().toISOString() });
+    return { id: doc.id, ...data, order };
   }
   return catStore.add(data);
 }
@@ -60,10 +71,12 @@ router.post('/', async (req, res) => {
 });
 
 router.patch('/:id', async (req, res) => {
-  const { name, feedIds } = req.body;
+  const { name, feedIds, order } = req.body;
   const update = {};
   if (name !== undefined) update.name = name.trim();
   if (feedIds !== undefined) update.feedIds = feedIds;
+  if (order !== undefined) update.order = order;
+  if (Object.keys(update).length === 0) return res.status(400).json({ error: 'nothing to update' });
   try {
     const cat = await patchCat(req.params.id, update);
     if (!cat) return res.status(404).json({ error: 'Category not found' });

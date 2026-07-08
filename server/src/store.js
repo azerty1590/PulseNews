@@ -37,9 +37,12 @@ export const memStore = {
 };
 
 export const catStore = {
-  list() { return [...categories]; },
+  list() {
+    return [...categories].sort((a, b) => (a.order ?? Number.MAX_SAFE_INTEGER) - (b.order ?? Number.MAX_SAFE_INTEGER));
+  },
   add(data) {
-    const cat = { ...data, id: nextId() };
+    const order = categories.length;
+    const cat = { ...data, id: nextId(), order };
     categories.push(cat);
     return cat;
   },
