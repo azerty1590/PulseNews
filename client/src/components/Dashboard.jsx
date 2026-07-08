@@ -7,6 +7,7 @@ import TableView from './TableView.jsx';
 import CategoryTabs from './CategoryTabs.jsx';
 import MobileFeed from './MobileFeed.jsx';
 import DiscoverPanel from './DiscoverPanel.jsx';
+import DiscoverStrip from './DiscoverStrip.jsx';
 import SettingsPanel from './SettingsPanel.jsx';
 import { useStarred } from '../hooks/useStarred.js';
 import StarredView from './StarredView.jsx';
@@ -470,6 +471,26 @@ export default function Dashboard() {
         {!isSpecial && loading && isMobile && (
           <MobileFeed feeds={[]} groupBySource={false} />
         )}
+
+        {/* ── Discover-more strip inside a category tab ── */}
+        {!isSpecial && !loading && safeTabId !== 'all' && (() => {
+          const cat = categories.find((c) => c.id === safeTabId);
+          if (!cat) return null;
+          return (
+            <div className="px-4 sm:px-6 pb-8">
+              <DiscoverStrip
+                category={cat}
+                feeds={feeds}
+                allCategories={categories}
+                onAdd={async (url, label, catId) => {
+                  const feed = await addFeed(url, label);
+                  if (feed?.id && catId) assignFeed(feed.id, catId);
+                  return feed;
+                }}
+              />
+            </div>
+          );
+        })()}
       </main>
 
       {showModal && <AddFeedModal onAdd={async (url, label) => {
