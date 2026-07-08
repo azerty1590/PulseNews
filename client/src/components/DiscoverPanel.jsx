@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { api } from '../lib/api.js';
-import { scoreSuggestions } from '../lib/discoverEngine.js';
+import { scoreSuggestions, tagsForCategory, matchesCategory, extractDomain } from '../lib/discoverEngine.js';
 
 // Translate vertical mouse-wheel into horizontal scroll for a container.
 // Only hijacks the wheel when there's actually horizontal overflow, and lets
@@ -309,11 +309,32 @@ export default function DiscoverPanel({ feeds, categories = [], onAdd, onRemove 
   });
 
   const [toastMsg, setToastMsg] = useState(null);
+  // Scope Discover to a specific category ('all' = every interest).
+  const [scopeId, setScopeId] = useState('all');
   const picksScrollRef = useWheelToHorizontal();
   const sitesScrollRef = useWheelToHorizontal();
 
   const followedUrls = new Set(feeds.map((f) => f.url ?? f.feedUrl ?? '').filter(Boolean));
   const categoryNames = categories.map((c) => c.name);
+
+  // The category currently scoping Discover (null when 'all').
+  const scopeCategory = scopeId === 'all' ? null : categories.find((c) => c.id === scopeId) ?? null;
+  // Feeds that belong to the scoped category (the "tree").
+  const scopeFeeds = useMemo(() => {
+    if (!scopeCategory) return [];
+    const ids = new Set(scopeCategory.feedIds ?? []);
+    return feeds.filter((f) => ids.has(f.id));
+  }, [scopeCategory, feeds]);
+  // Tag-set describing the scoped category (from name + its feeds' domains).
+  const scopeTags = useMemo(
+    () => scopeCategory ? tagsForCategory(scopeCategory, scopeFeeds) : [],
+    [scopeCategory, scopeFeeds]
+  );
+  // Filter helper: keep items matching the scoped category (all when unscoped).
+  const inScope = useCallback(
+    (item) => !scopeCategory || matchesCategory(item, scopeTags, scopeCategory.name),
+    [scopeCategory, scopeTags]
+  );
 
   // ── Load sources
   const loadSuggestions = useCallback(async () => {
@@ -383,7 +404,7 @@ export default function DiscoverPanel({ feeds, categories = [], onAdd, onRemove 
   const topSites = suggestions
     .filter((s) => {
       const url = s.feedUrl ?? s.url ?? '';
-      return url && !dismissed.has(url) && !followedUrls.has(url);
+      return url && !dismissed.has(url) && !followedUrls.has(url) && inScope(s);
     })
     .slice(0, PICK_SITE_COUNT);
   const topSiteUrls = new Set(topSites.map((s) => s.feedUrl ?? s.url ?? ''));
@@ -393,7 +414,7 @@ export default function DiscoverPanel({ feeds, categories = [], onAdd, onRemove 
     : suggestions.filter((s) => (s.tags ?? []).includes(activeTag))
   ).filter((s) => {
     const url = s.feedUrl ?? s.url ?? '';
-    return !dismissed.has(url) && !topSiteUrls.has(url); // exclude Today's-picks new sites
+    return !dismissed.has(url) && !topSiteUrls.has(url) && inScope(s); // scope + exclude Today's-picks
   }).slice(0, 50);
 
   // ── Dismiss source
@@ -458,18 +479,92 @@ export default function DiscoverPanel({ feeds, categories = [], onAdd, onRemove 
     return `Updated ${Math.round(diffH / 24)}d ago`;
   }
 
-  const visiblePicks = picks.filter((p) => !dismissedPicks.has(p.id));
+  const visiblePicks = picks.filter((p) => !dismissedPicks.has(p.id) && inScope(p));
 
   return (
     <div className="px-4 sm:px-6 py-6 max-w-screen-2xl mx-auto">
 
       {/* ── Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between mb-4">
         <div>
           <h2 className="text-lg font-semibold text-white/90">Discover</h2>
-          <p className="text-sm text-white/35 mt-0.5">Daily picks and sources matched to your interests</p>
+          <p className="text-sm text-white/35 mt-0.5">
+            {scopeCategory
+              ? `Recommendations for ${scopeCategory.name}`
+              : 'Daily picks and sources matched to your interests'}
+          </p>
         </div>
       </div>
+
+      {/* ── Category scope filter ── */}
+      {categories.length > 0 && (
+        <div className="flex gap-2 overflow-x-auto scrollbar-none pb-2 mb-4">
+          <button
+            onClick={() => setScopeId('all')}
+            className={`shrink-0 text-xs rounded-full px-3 py-1.5 transition-colors ${
+              scopeId === 'all' ? 'bg-white/[0.14] text-white' : 'bg-white/[0.05] text-white/40 hover:text-white/70 hover:bg-white/[0.08]'
+            }`}
+          >
+            All interests
+          </button>
+          {categories.map((c) => (
+            <button
+              key={c.id}
+              onClick={() => setScopeId(c.id)}
+              className={`shrink-0 text-xs rounded-full px-3 py-1.5 transition-colors ${
+                scopeId === c.id ? 'bg-accent text-white' : 'bg-white/[0.05] text-white/40 hover:text-white/70 hover:bg-white/[0.08]'
+              }`}
+            >
+              {c.name}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* ── Category tree: sources already inside the scoped category ── */}
+      {scopeCategory && (
+        <div className="mb-6 rounded-xl border border-white/[0.06] bg-surface-1 px-4 py-3">
+          <div className="flex items-center gap-2 mb-2.5">
+            <svg viewBox="0 0 16 16" fill="currentColor" className="h-3.5 w-3.5 text-accent/70">
+              <path d="M2 3.5A1.5 1.5 0 0 1 3.5 2h2.379a1.5 1.5 0 0 1 1.06.44l.622.62A1.5 1.5 0 0 0 8.62 3.5H12.5A1.5 1.5 0 0 1 14 5v6.5a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 2 11.5v-8Z" />
+            </svg>
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-white/40">
+              In {scopeCategory.name}
+            </span>
+            <span className="text-[11px] text-white/25">
+              {scopeFeeds.length} source{scopeFeeds.length === 1 ? '' : 's'}
+            </span>
+          </div>
+          {scopeFeeds.length === 0 ? (
+            <p className="text-xs text-white/25">No sources in this category yet — add one below.</p>
+          ) : (
+            <div className="flex flex-wrap gap-1.5">
+              {scopeFeeds.map((f) => {
+                const domain = extractDomain(f.url ?? f.feedUrl ?? '');
+                return (
+                  <a
+                    key={f.id}
+                    href={f.url ?? f.feedUrl ?? '#'}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="group/leaf flex items-center gap-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.07] px-2 py-1 transition-colors"
+                    title={domain ?? f.label}
+                  >
+                    {domain && (
+                      <img
+                        src={`https://www.google.com/s2/favicons?domain=${domain}&sz=32`}
+                        alt="" className="h-3.5 w-3.5 rounded object-contain"
+                        onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                      />
+                    )}
+                    <span className="text-[11px] text-white/55 group-hover/leaf:text-white/80 truncate max-w-[140px]">{f.label}</span>
+                  </a>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ════ TODAY'S PICKS ════ */}
       <section className="mb-10">
@@ -513,7 +608,11 @@ export default function DiscoverPanel({ feeds, categories = [], onAdd, onRemove 
         )}
 
         {!sugLoading && topSites.length === 0 && (
-          <p className="text-white/20 text-xs py-4 mb-4">No new websites right now — you're following the top matches.</p>
+          <p className="text-white/20 text-xs py-4 mb-4">
+            {scopeCategory
+              ? `No new ${scopeCategory.name} websites right now — try "All interests".`
+              : "No new websites right now — you're following the top matches."}
+          </p>
         )}
 
         {!sugLoading && topSites.length > 0 && (
@@ -565,7 +664,11 @@ export default function DiscoverPanel({ feeds, categories = [], onAdd, onRemove 
         )}
 
         {!picksLoading && !picksError && visiblePicks.length === 0 && (
-          <p className="text-white/20 text-xs py-4">No articles yet — try refreshing.</p>
+          <p className="text-white/20 text-xs py-4">
+            {scopeCategory
+              ? `No ${scopeCategory.name} articles in today's picks — try "All interests" or refresh.`
+              : 'No articles yet — try refreshing.'}
+          </p>
         )}
 
         {!picksLoading && !picksError && visiblePicks.length > 0 && (

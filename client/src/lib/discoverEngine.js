@@ -71,7 +71,7 @@ const DOMAIN_TAG_MAP = {
   'substack.com': ['writing'],
 };
 
-function extractDomain(url) {
+export function extractDomain(url) {
   try {
     return new URL(url).hostname.replace(/^www\./, '');
   } catch {
@@ -96,6 +96,36 @@ function tagsForDomain(domain) {
     if (domain.endsWith(key) || key.endsWith(domain)) return tags;
   }
   return [];
+}
+
+// Derive the tag-set that best describes a category, from its name plus the
+// domains/labels of the feeds already inside it. Used to scope Discover by the
+// selected category (best-effort matching).
+export function tagsForCategory(category, feedsInCategory = []) {
+  const tags = new Set();
+  for (const t of tagsForText(category?.name ?? '')) tags.add(t);
+  for (const f of feedsInCategory) {
+    const domain = extractDomain(f.url ?? f.feedUrl ?? '');
+    for (const t of tagsForDomain(domain)) tags.add(t);
+    const text = [f.url, f.label, f.description].filter(Boolean).join(' ');
+    for (const t of tagsForText(text)) tags.add(t);
+  }
+  return [...tags];
+}
+
+// Does a suggestion/pick match a category's tag-set? Falls back to a loose
+// name/keyword match so custom category names still filter something.
+export function matchesCategory(item, categoryTags, categoryName = '') {
+  const itemTags = item?.tags ?? [];
+  if (categoryTags.length && itemTags.some((t) => categoryTags.includes(t))) return true;
+  // Best-effort: category name appears in the item's title/label/tags.
+  const name = categoryName.trim().toLowerCase();
+  if (name.length >= 3) {
+    const hay = [item?.title, item?.label, item?.source, item?.description, ...(itemTags)]
+      .filter(Boolean).join(' ').toLowerCase();
+    if (hay.includes(name)) return true;
+  }
+  return false;
 }
 
 export function scoreSuggestions(suggestions, existingFeeds, categories = []) {
