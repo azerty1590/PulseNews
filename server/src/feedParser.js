@@ -28,11 +28,18 @@ export function normalizeUrl(raw) {
   const url = raw.trim();
   const lower = url.toLowerCase();
 
-  const redditMatch = url.match(/(?:reddit\.com\/)?r\/([A-Za-z0-9_]+)/i);
+  // Reddit: either a real reddit.com/r/<sub> URL, or the bare shorthand
+  // "r/<sub>" (must be at the very start — NOT "r/" appearing mid-path in
+  // another domain, e.g. salesforce.com/fr/blog).
+  const redditMatch =
+    url.match(/reddit\.com\/r\/([A-Za-z0-9_]+)/i) ||
+    url.match(/^\/?r\/([A-Za-z0-9_]+)/i);
   if (redditMatch) return `https://www.reddit.com/r/${redditMatch[1]}/.rss`;
 
-  // u/username Reddit user feed
-  const redditUser = url.match(/(?:reddit\.com\/)?u\/([A-Za-z0-9_-]+)/i);
+  // u/username Reddit user feed — same anchoring rules.
+  const redditUser =
+    url.match(/reddit\.com\/u(?:ser)?\/([A-Za-z0-9_-]+)/i) ||
+    url.match(/^\/?u\/([A-Za-z0-9_-]+)/i);
   if (redditUser) return `https://www.reddit.com/u/${redditUser[1]}/.rss`;
 
   const ytChannel = url.match(/youtube\.com\/channel\/([A-Za-z0-9_-]+)/i);
