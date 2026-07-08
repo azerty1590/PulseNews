@@ -52,12 +52,28 @@ function Favicon({ url, label }) {
   );
 }
 
+// Small dismiss (×) button — absolute top-right, revealed on hover.
+function DismissBtn({ onDismiss }) {
+  return (
+    <button
+      onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDismiss(); }}
+      title="Not interested"
+      className="absolute top-1.5 right-1.5 z-10 opacity-0 group-hover/chip:opacity-100 transition-opacity rounded p-0.5 bg-surface-1 text-white/25 hover:text-white/60"
+    >
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="h-3 w-3">
+        <path d="M5.28 4.22a.75.75 0 0 0-1.06 1.06L6.94 8l-2.72 2.72a.75.75 0 1 0 1.06 1.06L8 9.06l2.72 2.72a.75.75 0 1 0 1.06-1.06L9.06 8l2.72-2.72a.75.75 0 0 0-1.06-1.06L8 6.94 5.28 4.22Z" />
+      </svg>
+    </button>
+  );
+}
+
 // A recommended website (Add to this category).
-function SiteChip({ s, onAdd, adding, added }) {
+function SiteChip({ s, onAdd, onDismiss, adding, added }) {
   const url = s.feedUrl ?? s.url ?? '';
   return (
-    <div className="relative flex flex-col gap-1.5 rounded-xl border border-white/[0.06] bg-surface-1 px-3 py-2.5 w-[240px] h-[92px] shrink-0 snap-start">
-      <div className="flex items-center gap-2 min-w-0">
+    <div className="group/chip relative flex flex-col gap-1.5 rounded-xl border border-white/[0.06] bg-surface-1 px-3 py-2.5 w-[240px] h-[92px] shrink-0 snap-start">
+      <DismissBtn onDismiss={onDismiss} />
+      <div className="flex items-center gap-2 min-w-0 pr-4">
         <Favicon url={url} label={s.label} />
         <span className="text-[12.5px] font-semibold text-white/80 truncate">{s.label}</span>
       </div>
@@ -77,17 +93,25 @@ function SiteChip({ s, onAdd, adding, added }) {
 }
 
 // A recommended article.
-function PickChip({ pick }) {
+function PickChip({ pick, onDismiss }) {
   return (
     <a href={pick.url} target="_blank" rel="noopener noreferrer"
-      className="flex flex-col gap-1.5 rounded-xl border border-white/[0.06] bg-surface-1 hover:border-white/[0.10] hover:bg-white/[0.025] transition-colors px-3 py-2.5 w-[240px] h-[92px] shrink-0 snap-start">
-      <div className="flex items-center gap-2 min-w-0">
+      className="group/chip relative flex flex-col gap-1.5 rounded-xl border border-white/[0.06] bg-surface-1 hover:border-white/[0.10] hover:bg-white/[0.025] transition-colors px-3 py-2.5 w-[240px] h-[92px] shrink-0 snap-start">
+      <DismissBtn onDismiss={onDismiss} />
+      <div className="flex items-center gap-2 min-w-0 pr-4">
         <Favicon url={pick.url} label={pick.source} />
         <span className="text-[11px] text-white/35 truncate">{pick.source}</span>
       </div>
       <p className="text-[12px] font-medium text-white/75 leading-snug line-clamp-2">{pick.title}</p>
     </a>
   );
+}
+
+const DISMISSED_SITES_KEY = 'discover:dismissed';
+const DISMISSED_PICKS_KEY = 'discover:dismissed-picks';
+
+function loadSet(key) {
+  try { return new Set(JSON.parse(localStorage.getItem(key) ?? '[]')); } catch { return new Set(); }
 }
 
 /* Compact Discover strip shown inside a category tab. */
@@ -97,8 +121,26 @@ export default function DiscoverStrip({ category, feeds, allCategories, onAdd })
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(new Set());
   const [added, setAdded] = useState(new Set());
+  // Dismissals shared with the main Discover panel via the same localStorage keys.
+  const [dismissedSites, setDismissedSites] = useState(() => loadSet(DISMISSED_SITES_KEY));
+  const [dismissedPicks, setDismissedPicks] = useState(() => loadSet(DISMISSED_PICKS_KEY));
   const sitesRef = useWheelToHorizontal();
   const picksRef = useWheelToHorizontal();
+
+  const dismissSite = useCallback((url) => {
+    setDismissedSites((prev) => {
+      const next = new Set(prev).add(url);
+      localStorage.setItem(DISMISSED_SITES_KEY, JSON.stringify([...next]));
+      return next;
+    });
+  }, []);
+  const dismissPick = useCallback((id) => {
+    setDismissedPicks((prev) => {
+      const next = new Set(prev).add(id);
+      localStorage.setItem(DISMISSED_PICKS_KEY, JSON.stringify([...next]));
+      return next;
+    });
+  }, []);
 
   const followedUrls = useMemo(
     () => new Set(feeds.map((f) => f.url ?? f.feedUrl ?? '').filter(Boolean)),
@@ -135,15 +177,15 @@ export default function DiscoverStrip({ category, feeds, allCategories, onAdd })
     suggestions
       .filter((s) => {
         const url = s.feedUrl ?? s.url ?? '';
-        return url && !followedUrls.has(url) && matchesCategory(s, scopeTags, category.name);
+        return url && !followedUrls.has(url) && !dismissedSites.has(url) && matchesCategory(s, scopeTags, category.name);
       })
       .slice(0, 12),
-    [suggestions, followedUrls, scopeTags, category.name]
+    [suggestions, followedUrls, dismissedSites, scopeTags, category.name]
   );
 
   const matchedPicks = useMemo(() =>
-    picks.filter((p) => matchesCategory(p, scopeTags, category.name)).slice(0, 20),
-    [picks, scopeTags, category.name]
+    picks.filter((p) => !dismissedPicks.has(p.id) && matchesCategory(p, scopeTags, category.name)).slice(0, 20),
+    [picks, dismissedPicks, scopeTags, category.name]
   );
 
   const handleAdd = useCallback(async (s) => {
@@ -182,7 +224,7 @@ export default function DiscoverStrip({ category, feeds, allCategories, onAdd })
             <div ref={sitesRef} className="flex gap-2 overflow-x-auto scrollbar-none pb-2 mb-6 -mx-1 px-1 snap-x overscroll-x-contain">
               {matchedSites.map((s) => {
                 const url = s.feedUrl ?? s.url ?? '';
-                return <SiteChip key={url} s={s} onAdd={handleAdd} adding={adding.has(url)} added={added.has(url)} />;
+                return <SiteChip key={url} s={s} onAdd={handleAdd} onDismiss={() => dismissSite(url)} adding={adding.has(url)} added={added.has(url)} />;
               })}
             </div>
           )}
@@ -194,7 +236,7 @@ export default function DiscoverStrip({ category, feeds, allCategories, onAdd })
         <>
           <p className="text-[11px] font-semibold uppercase tracking-wider text-white/30 mb-2">Today’s picks</p>
           <div ref={picksRef} className="flex gap-2 overflow-x-auto scrollbar-none pb-2 -mx-1 px-1 snap-x overscroll-x-contain">
-            {matchedPicks.map((p) => <PickChip key={p.id} pick={p} />)}
+            {matchedPicks.map((p) => <PickChip key={p.id} pick={p} onDismiss={() => dismissPick(p.id)} />)}
           </div>
         </>
       )}
